@@ -1857,6 +1857,17 @@ html,body{background-color:var(--bg) !important}
   --app-bg:radial-gradient(110% 62% at 94% 0%,rgba(22,128,76,.34),rgba(22,128,76,0) 62%),radial-gradient(110% 62% at 6% 0%,rgba(214,219,216,.10),rgba(214,219,216,0) 58%),linear-gradient(180deg,#0E100F 0%,#080909 48%,#040505 100%);
 }
 
+/* boas-vindas: nome e foto */
+.ob-in{width:100%;height:56px;border-radius:18px;border:0;padding:0 18px;font:inherit;font-size:19px;font-weight:600;text-align:center;color:var(--label);
+  background:linear-gradient(180deg,var(--gl1),var(--gl2));box-shadow:var(--gshadow),0 0 0 .5px var(--gline) inset;outline:none;margin-top:4px}
+.ob-in:focus{box-shadow:inset 0 0 0 2px var(--tint),var(--gshadow)}
+.ob-err{min-height:20px;font-size:13.5px;color:var(--neg);margin:8px 0 4px}
+.ob-av{display:flex;justify-content:center;margin:6px 0 26px}
+.ob-av .av{box-shadow:0 18px 40px rgba(0,0,0,.3)}
+.ob-body[data-step="fim"]{padding-top:8px !important}
+/* o recorte da foto abre por cima da boas-vindas */
+.cropper{z-index:99 !important}
+
 </style>
 </head>
 <body>
@@ -3513,6 +3524,15 @@ function openBoasVindas(){
       return '<div class="ob-logo">'+lg+'</div><h2>Boas-vindas ao Precize</h2><p class="ob-p">Três perguntas rápidas para deixar o app do seu jeito. Leva menos de um minuto.</p>'+
       '<button type="button" class="btn full ob-go" data-ob-next>Começar</button><button type="button" class="ob-skip2" data-ob-skip>Agora não</button>'+
       '<p class="ob-priv">'+glyph('lock', 13)+'Suas respostas ficam na sua conta e servem só para ajustar o app a você.</p>'; },
+    function(){ const n = perfil().nome;
+      return '<h2>Como você se chama?</h2><p class="ob-p">É assim que o app vai te chamar.</p>'+
+        '<input class="ob-in" id="obNome" type="text" maxlength="30" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="Seu nome" value="'+esc(n)+'" aria-label="Seu nome">'+
+        '<p class="ob-err" id="obErr"></p><button type="button" class="btn full ob-go" data-ob-nome>Continuar</button>'; },
+    function(){ const p = perfil(), pn = (p.nome || '').split(' ')[0];
+      return '<h2>'+(pn ? 'Quer colocar uma foto, '+esc(pn)+'?' : 'Quer colocar uma foto?')+'</h2><p class="ob-p">Ela aparece no seu perfil. Dá para trocar quando quiser.</p>'+
+        '<div class="ob-av">'+avatarHTML(128)+'</div>'+
+        (p.foto ? '<button type="button" class="btn full ob-go" data-ob-next>Continuar</button><button type="button" class="ob-skip2" data-ob-foto>Trocar foto</button>'
+                : '<button type="button" class="btn full ob-go" data-ob-foto>Escolher foto</button><button type="button" class="ob-skip2" data-ob-next>Agora não</button>'); },
     function(){ return '<h2>Qual a sua idade?</h2><p class="ob-p">Assim o app ajusta o tamanho do texto e o jeito de mostrar as coisas.</p>'+opcoes(IDADES, 'idade'); },
     function(){ return '<h2>Como você se identifica?</h2><p class="ob-p">Ajuda o app a falar com você do jeito certo.</p>'+opcoes(GENEROS, 'genero'); },
     function(){ return '<h2>Como você se sente com as suas finanças?</h2><p class="ob-p">Não tem resposta certa. É só para o app começar no ritmo certo para você.</p>'+opcoes(EXPS, 'exp', true); },
@@ -3526,17 +3546,29 @@ function openBoasVindas(){
         '</div><p class="ob-p small">Você muda qualquer coisa quando quiser em Meu perfil.</p><button type="button" class="btn full ob-go" data-ob-fim>Começar a usar</button>'; }
   ];
   const draw = function(){
-    const dots = step > 0 && step < 4 ? '<div class="ob-dots">'+[1,2,3].map(function(i){ return '<i'+(i <= step ? ' class="on"' : '')+'></i>'; }).join('')+'</div>' : '';
-    ov.innerHTML = '<div class="ob-top">'+(step > 0 && step < 4 ? '<button type="button" class="ob-back" data-ob-back>'+ic('chevL',18,2.5)+'Voltar</button>' : '<span></span>')+dots+
-      (step > 0 && step < 4 ? '<button type="button" class="ob-skip" data-ob-pular>Pular</button>' : '<span></span>')+'</div><div class="ob-body" data-step="'+step+'">'+passos[step]()+'</div>';
+    const ULT = passos.length - 1, meio = step > 0 && step < ULT;
+    const dots = meio ? '<div class="ob-dots">'+[1,2,3,4,5].map(function(i){ return '<i'+(i <= step ? ' class="on"' : '')+'></i>'; }).join('')+'</div>' : '';
+    ov.innerHTML = '<div class="ob-top">'+(meio ? '<button type="button" class="ob-back" data-ob-back>'+ic('chevL',18,2.5)+'Voltar</button>' : '<span></span>')+dots+
+      (meio ? '<button type="button" class="ob-skip" data-ob-pular>Pular</button>' : '<span></span>')+'</div><div class="ob-body" data-step="'+(step === ULT ? 'fim' : step)+'">'+passos[step]()+'</div>';
     ov.scrollTop = 0;
+    const ni = $('#obNome', ov);
+    if(ni){ ni.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); $('[data-ob-nome]', ov).click(); } }); if(!TOUCH) setTimeout(function(){ ni.focus(); }, 300); }
   };
-  const fechar = function(){ ov.classList.remove('on'); document.body.classList.remove('ob-open'); setTimeout(function(){ ov.remove(); }, 260); render(); };
+  const naFoto = function(){ if(ov.isConnected && step === 2) draw(); };
+  document.addEventListener('fotoatualizada', naFoto);
+  const fechar = function(){ document.removeEventListener('fotoatualizada', naFoto); ov.classList.remove('on'); document.body.classList.remove('ob-open'); setTimeout(function(){ ov.remove(); }, 260); render(); };
   draw(); requestAnimationFrame(function(){ ov.classList.add('on'); });
   ov.addEventListener('click', function(ev){
     const o = ev.target.closest('[data-ob]');
     if(o){ r[o.getAttribute('data-ob')] = o.getAttribute('data-v'); $$('.ob-opt', ov).forEach(function(b){ b.classList.toggle('on', b === o); }); haptic(6);
       setTimeout(function(){ step++; draw(); }, 240); return; }
+    const bn = ev.target.closest('[data-ob-nome]');
+    if(bn){ const n = $('#obNome', ov).value.trim();
+      if(!n){ $('#obErr', ov).textContent = 'Escreva seu nome, ou toque em Pular.'; $('#obNome', ov).focus(); return; }
+      bn.disabled = true; bn.textContent = 'Salvando';
+      salvarNome(n).then(function(){ step++; draw(); haptic(6); }, function(e){ bn.disabled = false; bn.textContent = 'Continuar'; $('#obErr', ov).textContent = contaErro(e); });
+      return; }
+    if(ev.target.closest('[data-ob-foto]')){ escolherFoto(); return; }
     if(ev.target.closest('[data-ob-next]') || ev.target.closest('[data-ob-pular]')){ step++; draw(); return; }
     if(ev.target.closest('[data-ob-back]')){ step = Math.max(0, step - 1); draw(); return; }
     if(ev.target.closest('[data-ob-skip]')){ sobreGravar({ done:true }); fechar(); return; }
@@ -4091,6 +4123,7 @@ async function fotoGravar(img){
   const pl = perfilLocal(); pl.foto = img || '';
   if(!perfilSalvar(pl)) throw new Error('espaço');
   renderMe(); if(V.tab === 'conta') renderConta();
+  document.dispatchEvent(new Event('fotoatualizada'));
   const db = contaUser() && window.__FB.db();
   if(db){ if(img) await db.doc('perfil/foto').set({ img: img, atualizadoEm: new Date().toISOString() }); else await db.doc('perfil/foto').delete(); }
 }
@@ -4101,11 +4134,11 @@ function renderConta(){
   const p = perfil();
   let gv = .45; try{ const s = localStorage.getItem(GLASS_KEY); if(s !== null) gv = +s; }catch(e){}
   let h = '<div class="card prof">'+avatarHTML(64)+'<div class="pf-t">'+
-    (p.nome ? '<b class="me-name">'+esc(p.nome)+'</b>' : '<button type="button" class="me-add" data-apelido>Adicionar apelido</button>')+
+    (p.nome ? '<b class="me-name">'+esc(p.nome)+'</b>' : '<button type="button" class="me-add" data-apelido>Adicionar nome</button>')+
     (p.conta ? '<small class="me-mail">'+esc(p.email)+'</small>'+(p.verificado ? '<span class="me-ok">'+glyph('shieldck', 13)+'E-mail verificado</span>' : '<button type="button" class="me-warn" data-verificar>Verificar e-mail</button>') : '')+
   '</div></div>';
   h += '<div class="sec-h">Perfil</div><div class="group">'+
-    linhaConta('data-apelido', 'person', '', 'Apelido', p.nome || 'Adicionar')+
+    linhaConta('data-apelido', 'person', '', 'Nome', p.nome || 'Adicionar')+
     linhaConta('data-foto', 'camera', '', 'Foto de perfil', p.foto ? 'Alterar' : 'Adicionar')+'</div>';
   const sb = sobre(), jt = jeito();
   h += '<div class="sec-h">Sobre você</div><div class="group">'+
@@ -4149,18 +4182,23 @@ function contaErro(e){
     'auth/missing-password':'Digite a sua senha atual.' })[c] || 'Não deu certo agora. Tente de novo.';
 }
 function sheetOcupado(sh, on, texto){ const b = $('.sh-nav [data-act]', sh) || $('[data-send]', sh); if(b){ b.disabled = on; if(texto) b.dataset.t = texto; } }
+async function salvarNome(n){
+  n = String(n || '').trim().replace(/\s+/g, ' ');
+  if(contaUser()) await window.__FB.updateName(n);
+  else { const pl = perfilLocal(); pl.nome = n; perfilSalvar(pl); }
+  renderMe(); if(V.tab === 'conta') renderConta();
+  return n;
+}
 function abrirApelido(){
   const p = perfil();
-  const sh = openSheet({ title:'Apelido', small:true, action:'Salvar', html:
-    '<p class="sh-p">Como você quer ser chamado no app.</p><div class="group"><label class="cell"><input id="apIn" type="text" maxlength="30" autocomplete="nickname" placeholder="Seu apelido" value="'+esc(p.nome)+'" aria-label="Apelido"></label></div><p class="sh-err" id="apErr"></p>',
+  const sh = openSheet({ title:'Nome', small:true, action:'Salvar', html:
+    '<p class="sh-p">Seu nome, do jeito que você gosta de ser chamado.</p><div class="group"><label class="cell"><input id="apIn" type="text" maxlength="30" autocomplete="name" autocapitalize="words" placeholder="Seu nome" value="'+esc(p.nome)+'" aria-label="Nome"></label></div><p class="sh-err" id="apErr"></p>',
     onAction: async function(){
-      const n = $('#apIn', sh).value.trim().replace(/\s+/g, ' ');
-      if(contaUser()){
-        try{ sheetOcupado(sh, true); await window.__FB.updateName(n); }
-        catch(e){ sheetOcupado(sh, false); $('#apErr', sh).textContent = contaErro(e); return; }
-      } else { const pl = perfilLocal(); pl.nome = n; perfilSalvar(pl); }
-      closeSheet(); renderMe(); if(V.tab === 'conta') renderConta(); haptic(8);
-      island(n ? 'Pronto, '+n : 'Apelido removido');
+      let n = $('#apIn', sh).value;
+      try{ sheetOcupado(sh, true); n = await salvarNome(n); }
+      catch(e){ sheetOcupado(sh, false); $('#apErr', sh).textContent = contaErro(e); return; }
+      closeSheet(); haptic(8);
+      island(n ? 'Pronto, '+n : 'Nome removido');
     }});
   const inp = $('#apIn', sh);
   inp.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); $('.sh-nav [data-act]', sh).click(); } });
