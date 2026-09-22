@@ -1,13 +1,12 @@
 /*
-  Cole aqui a configuração do seu projeto Firebase.
-  No Firebase: Configurações do projeto > Seus apps > app da Web > Configuração.
-  Troque só o que está entre as aspas, mantendo as vírgulas.
+  Configuração do projeto Firebase "Precize".
+  Não é segredo: a proteção dos dados fica nas regras do Firestore.
 */
 window.FIREBASE_CONFIG = {
-  apiKey: "COLE_AQUI",
-  authDomain: "COLE_AQUI",
-  projectId: "COLE_AQUI",
-  storageBucket: "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyCFxE4Yp47gvkGbxdwZCD6b-zOcY62FiG8",
+  authDomain: "precize-2263c.firebaseapp.com",
+  projectId: "precize-2263c",
+  storageBucket: "precize-2263c.firebasestorage.app",
+  messagingSenderId: "875029699246",
+  appId: "1:875029699246:web:894f6f2cdcbff5a91a2b3f"
 };
