@@ -2127,6 +2127,14 @@ body.lock-open .main,body.lock-open .tabbar,body.lock-open .side{filter:blur(22p
   .cell.icon-row{padding-right:12px}
   .cell.icon-row .v{font-size:16px}
 }
+/* aviso de onde o e-mail de confirmação chega */
+.sec-f.aviso-mail{display:flex;gap:9px;align-items:flex-start;line-height:1.45}
+.sec-f.aviso-mail svg{color:var(--warn);flex:none;margin-top:2px}
+.sec-f.aviso-mail b{color:var(--label);font-weight:600}
+
+/* teclado ao criar o código, dentro da folha */
+.lk-pad.set{max-width:280px;margin:6px auto 4px;gap:12px}
+.lk-pad.set .lk-k{width:66px;height:66px;font-size:26px}
 
 </style>
 </head>
@@ -4424,25 +4432,30 @@ function lockEsqueci(){
 function abrirTrava(){
   const c = lockCfg();
   if(lockLigado()){ abrirTravaLigada(c); return; }
-  let etapa = 1, pin1 = '', pin = '';
-  const sh = openSheet({ title:'Travar o app', small:true, html:'<div id="lkSet"></div>' });
+  let etapa = 1, pin1 = '', pin = '', erro = '';
+  const sh = openSheet({ title:'Travar o app', html:'<div id="lkSet"></div>' });
+  const teclas = ['1','2','3','4','5','6','7','8','9','','0','apagar'];
   const draw = function(){
     $('#lkSet', sh).innerHTML =
       '<p class="sh-p">'+(etapa === 1 ? 'Escolha um código de 4 dígitos. Ele será pedido ao abrir o app.' : 'Digite o código de novo para confirmar.')+'</p>'+
-      '<div class="lk-dots meio" id="lkSetDots">'+[0,1,2,3].map(function(i){ return '<i'+(i < pin.length ? ' class="on"' : '')+'></i>'; }).join('')+'</div>'+
-      '<input id="lkInp" class="lk-inp" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Código de 4 dígitos">'+
-      '<p class="lk-erro" id="lkSetErr"></p>';
-    const inp = $('#lkInp', sh); inp.value = pin;
-    setTimeout(function(){ inp.focus({ preventScroll:true }); }, 60);
+      '<div class="lk-dots meio">'+[0,1,2,3].map(function(i){ return '<i'+(i < pin.length ? ' class="on"' : '')+'></i>'; }).join('')+'</div>'+
+      '<p class="lk-erro">'+esc(erro)+'</p>'+
+      '<div class="lk-pad set">'+teclas.map(function(t){
+        if(!t) return '<span></span>';
+        if(t === 'apagar') return '<button type="button" class="lk-k lk-ic" data-set-k="apagar" aria-label="Apagar">'+ic('chevL',24,2.4)+'</button>';
+        return '<button type="button" class="lk-k" data-set-k="'+t+'">'+t+'</button>';
+      }).join('')+'</div>';
   };
   draw();
-  sh.addEventListener('input', async function(ev){
-    if(ev.target.id !== 'lkInp') return;
-    pin = ev.target.value.replace(/\D/g, '').slice(0, 4);
-    $('#lkSetDots', sh).innerHTML = [0,1,2,3].map(function(i){ return '<i'+(i < pin.length ? ' class="on"' : '')+'></i>'; }).join('');
+  sh.addEventListener('click', async function(ev){
+    const b = ev.target.closest('[data-set-k]'); if(!b) return;
+    const v = b.getAttribute('data-set-k');
+    if(v === 'apagar'){ pin = pin.slice(0, -1); erro = ''; draw(); haptic(3); return; }
+    if(pin.length >= 4) return;
+    pin += v; erro = ''; draw(); haptic(4);
     if(pin.length < 4) return;
-    if(etapa === 1){ pin1 = pin; pin = ''; etapa = 2; draw(); haptic(6); return; }
-    if(pin !== pin1){ $('#lkSetErr', sh).textContent = 'Os códigos não bateram. Comece de novo.'; etapa = 1; pin1 = ''; pin = ''; setTimeout(draw, 60); haptic(12); return; }
+    if(etapa === 1){ setTimeout(function(){ pin1 = pin; pin = ''; etapa = 2; draw(); haptic(6); }, 160); return; }
+    if(pin !== pin1){ setTimeout(function(){ erro = 'Os códigos não bateram. Comece de novo.'; etapa = 1; pin1 = ''; pin = ''; draw(); haptic(12); }, 160); return; }
     await lockDefinir(pin);
     closeSheet(); haptic(10); island('App travado com código');
     if(V.tab === 'conta') renderConta();
@@ -5263,8 +5276,11 @@ function renderConta(){
   h += '<div class="sec-h">Login e segurança</div><div class="group">'+
     linhaConta('data-email', 'mail', '', 'E-mail', p.conta ? p.email : 'Mudar', ' acct')+
     linhaConta('data-senha', 'lock', '', 'Senha', 'Mudar')+
-    (p.conta ? '<div class="cell icon-row">'+sq(p.verificado ? 'var(--pos)' : 'var(--warn)', 'shieldck', 'sem', 17)+'<span class="t grow">Verificação do e-mail</span><span class="v">'+(p.verificado ? 'Verificado' : 'Pendente')+'</span></div>' : '')+
-    '</div><div class="sec-f">Para mudar o e-mail ou a senha, enviamos um link de confirmação para você.</div>';
+    (p.conta ? '<div class="cell icon-row">'+sq(p.verificado ? 'var(--pos)' : 'var(--warn)', 'shieldck', 'sem', 17)+'<span class="t grow">Verificação do e-mail</span><span class="v">'+(p.verificado ? 'Verificado' : 'Aguardando')+'</span></div>' : '')+
+    '</div>'+
+    (p.conta && !p.verificado
+      ? '<div class="sec-f aviso-mail">'+glyph('mail', 14)+'<span>Aguardando a confirmação do e-mail. O link já foi enviado para <b>'+esc(p.email)+'</b> e chega como <b>'+esc(remetente())+'</b>, então <b>procure no spam, no lixo eletrônico ou em promoções</b>. Toque em Verificar e-mail para reenviar.</span></div>'
+      : '<div class="sec-f">Para mudar o e-mail ou a senha, enviamos um link de confirmação para você.</div>');
   h += '<div class="sec-h">Preferências</div><div class="group">'+
     '<div class="cell icon-row">'+sq('', 'eye', '', 17)+'<span class="t grow">Modo discreto</span><label class="switch"><input type="checkbox" id="privSw"'+(document.body.classList.contains('private') ? ' checked' : '')+' aria-label="Modo discreto"><span></span></label></div>'+
     linhaConta('data-vidro', 'moon', '', 'Vidro', glassLabel(gv))+
@@ -5324,6 +5340,7 @@ function abrirEmail(){
   const p = perfil();
   const sh = openSheet({ title:'Mudar e-mail', small:true, action:'Enviar', html:
     '<p class="sh-p">Vamos mandar um link de confirmação para o e-mail novo. O e-mail da conta só muda depois que você tocar nele.</p>'+
+    '<div class="sec-f aviso-mail">'+glyph('mail', 14)+'<span>O link chega como <b>'+esc(remetente())+'</b>. Se não aparecer na caixa de entrada, procure no <b>spam</b>, no <b>lixo eletrônico</b> ou em <b>promoções</b>.</span></div>'+
     '<div class="group"><label class="cell"><input id="emNovo" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="email" placeholder="E-mail novo" aria-label="E-mail novo"></label>'+
     '<label class="cell"><input id="emSenha" type="password" autocomplete="current-password" placeholder="Senha atual" aria-label="Senha atual"></label></div>'+
     '<p class="sh-err" id="emErr"></p><p class="sh-note">E-mail atual: '+esc(p.email)+'</p>',
