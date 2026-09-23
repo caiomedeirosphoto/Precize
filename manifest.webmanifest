@@ -28,5 +28,46 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova saída",
+      "short_name": "Saída",
+      "description": "Lançar uma saída agora",
+      "url": "./?novo=out",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nova entrada",
+      "short_name": "Entrada",
+      "description": "Lançar uma entrada agora",
+      "url": "./?novo=in",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Ver o resumo",
+      "short_name": "Resumo",
+      "description": "Como está o mês",
+      "url": "./?ir=resumo",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }
