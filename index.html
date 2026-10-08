@@ -2022,7 +2022,6 @@ body.mt-drag{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .cc-datas{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:13px;color:var(--label-2)}
 .cc-datas span{display:inline-flex;align-items:center;gap:6px}
 .cc-datas svg{color:var(--label-3);flex:none}
-.cc-ver{margin-top:14px}
 .cc-cores{display:flex;flex-wrap:wrap;gap:10px;padding:4px 2px 2px}
 .cc-cor{width:38px;height:38px;border-radius:13px;border:0;cursor:pointer;background:var(--cc);color:#fff;display:grid;place-items:center;
   box-shadow:0 4px 12px color-mix(in srgb,var(--cc) 30%,transparent);transition:transform .3s var(--pop-ease),box-shadow .2s ease}
@@ -2100,6 +2099,7 @@ body.lock-open .main,body.lock-open .tabbar,body.lock-open .side{filter:blur(22p
 .lock{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;background:var(--bg);background-image:var(--app-bg);opacity:0;transition:opacity .22s ease}
 .lock.on{opacity:1} .lock.saindo{opacity:0}
 .lk-in{width:100%;max-width:340px;padding:0 20px calc(env(safe-area-inset-bottom,0px) + 18px);text-align:center}
+.lk-logo{display:flex;justify-content:center}
 .lk-logo svg{width:66px;height:66px;border-radius:17px;box-shadow:0 14px 30px rgba(0,0,0,.32)}
 .lk-in h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:16px 0 6px}
 .lk-p{font-size:14.5px;color:var(--label-2);margin:0 0 22px;min-height:20px}
@@ -2292,9 +2292,10 @@ body.private .fe-num,body.private .fe-io b,body.private .fe-linha b{filter:blur(
           <button type="button" class="ch" data-m="1" aria-label="Próximo mês"></button>
         </div>
       </div>
-      <div class="seg" id="planSeg" style="--n:3;--i:0"><i class="thumb"></i>
+      <div class="seg" id="planSeg" style="--n:4;--i:0"><i class="thumb"></i>
         <button type="button" data-s="orc" aria-pressed="true">Limites</button>
-        <button type="button" data-s="fixas" aria-pressed="false">Contas fixas</button>
+        <button type="button" data-s="cartoes" aria-pressed="false">Cartões</button>
+        <button type="button" data-s="fixas" aria-pressed="false">Fixas</button>
         <button type="button" data-s="metas" aria-pressed="false">Metas</button>
       </div>
       <div id="plan"></div>
@@ -3988,7 +3989,7 @@ $('#p-resumo').addEventListener('click', function(ev){
   const fb = ev.target.closest('[data-fech]');
   if(fb){ abrirFechamento(fb.getAttribute('data-fech')); return; }
   if(ev.target.closest('[data-saldo]')){ abrirSaldo(); return; }
-  if(ev.target.closest('[data-gocc]')){ V.plan = 'orc'; V.ym = ymNow(); go('planejar'); const b = $('#planSeg [data-s="orc"]'); if(b) segSet($('#planSeg'), b); renderPlanejar(); setTimeout(function(){ const el = $('.cc'); if(el) el.scrollIntoView({ block:'center', behavior:'smooth' }); }, 300); return; }
+  if(ev.target.closest('[data-gocc]')){ V.plan = 'cartoes'; V.ym = ymNow(); go('planejar'); const b = $('#planSeg [data-s="cartoes"]'); if(b) segSet($('#planSeg'), b); renderPlanejar(); setTimeout(function(){ const el = $('.cc'); if(el) el.scrollIntoView({ block:'center', behavior:'smooth' }); }, 300); return; }
   if(ev.target.closest('[data-golim]')){ V.plan = 'orc'; V.ym = ymNow(); go('planejar'); const b = $('#planSeg [data-s="orc"]'); if(b) segSet($('#planSeg'), b); return; }
   if(ev.target.closest('[data-gometas]')){ V.plan = 'metas'; go('planejar'); const b = $('#planSeg [data-s="metas"]'); if(b) segSet($('#planSeg'), b); renderPlanejar(); return; }
 });
@@ -4658,7 +4659,7 @@ async function lockHash(pin, sal){
 async function lockDefinir(pin){
   const sal = bytesB64(aleatorio(12));
   const c = lockCfg() || {};
-  c.sal = sal; c.hash = await lockHash(pin, sal);
+  c.sal = sal; c.hash = await lockHash(pin, sal); c.falhas = 0; c.espera = 0;
   lockSalvar(c);
 }
 async function lockConfere(pin){
@@ -4666,6 +4667,16 @@ async function lockConfere(pin){
   return (await lockHash(pin, c.sal)) === c.hash;
 }
 function lockDesligar(){ try{ localStorage.removeItem(LOCK_KEY); }catch(e){} }
+/* limite de tentativas: depois de 5 erros seguidos, espera 30 s; cada erro a mais dobra a espera (até 15 min) */
+function lockEspera(){ const c = lockCfg() || {}; return Math.max(0, (c.espera || 0) - Date.now()); }
+function lockErrou(){
+  const c = lockCfg(); if(!c) return;
+  c.falhas = (c.falhas || 0) + 1;
+  if(c.falhas >= 5) c.espera = Date.now() + Math.min(15 * 60000, 30000 * Math.pow(2, c.falhas - 5));
+  lockSalvar(c);
+}
+function lockAcertou(){ const c = lockCfg(); if(c && (c.falhas || c.espera)){ c.falhas = 0; c.espera = 0; lockSalvar(c); } }
+function lockEsperaTexto(ms){ const s = Math.ceil(ms / 1000); return 'Muitas tentativas. Tente de novo em '+(s >= 60 ? Math.ceil(s / 60)+' min' : s+' s')+'.'; }
 /* ---------- biometria (Face ID no iPhone, digital no Android) ---------- */
 async function bioDisponivel(){
   try{ return !!(window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); }catch(e){ return false; }
@@ -4695,7 +4706,7 @@ function mostrarTrava(){
   const ov = document.createElement('div'); ov.className = 'lock'; ov.id = 'lockScreen';
   ov.setAttribute('role','dialog'); ov.setAttribute('aria-label','App travado');
   document.body.appendChild(ov); document.body.classList.add('lock-open');
-  let pin = '', errando = false;
+  let pin = '', errando = false, aviso = '';
   const bi = document.querySelector('.brand-ic');
   const logo = bi ? bi.innerHTML.replace(/id="([^"]+)"/g, 'id="lk-$1"').replace(/url\(#([^)]+)\)/g, 'url(#lk-$1)') : '';
   const teclas = ['1','2','3','4','5','6','7','8','9','bio','0','apagar'];
@@ -4704,7 +4715,7 @@ function mostrarTrava(){
     ov.innerHTML = '<div class="lk-in">'+
       '<div class="lk-logo">'+logo+'</div>'+
       '<h2>Precize está travado</h2>'+
-      '<p class="lk-p" id="lkMsg">Digite o seu código de 4 dígitos</p>'+
+      '<p class="lk-p'+(lockEspera() || aviso ? ' erro' : '')+'" id="lkMsg">'+(lockEspera() ? lockEsperaTexto(lockEspera()) : esc(aviso || 'Digite o seu código de 4 dígitos'))+'</p>'+
       '<div class="lk-dots'+(errando ? ' erro' : '')+'" id="lkDots">'+[0,1,2,3].map(function(i){ return '<i'+(i < pin.length ? ' class="on"' : '')+'></i>'; }).join('')+'</div>'+
       '<div class="lk-pad">'+teclas.map(function(t){
         if(t === 'bio') return c && c.bio ? '<button type="button" class="lk-k lk-ic" data-lk="bio" aria-label="Usar Face ID ou digital">'+glyph('lock',24)+'</button>' : '<span></span>';
@@ -4713,10 +4724,12 @@ function mostrarTrava(){
       }).join('')+'</div>'+
       '<button type="button" class="lk-esq" data-lk="esqueci">Esqueci o código</button>'+
     '</div>';
+    clearTimeout(ov._esp);
+    if(lockEspera()) ov._esp = setTimeout(function(){ if(!errando && ov.isConnected) draw(); }, 1000);   // contagem regressiva
   };
   const erro = function(msg){
-    errando = true; pin = ''; draw(); haptic(12);
-    $('#lkMsg', ov).textContent = msg || 'Código errado. Tente de novo.';
+    errando = true; pin = ''; aviso = msg || 'Código errado. Tente de novo.'; draw(); haptic(12);
+    $('#lkMsg', ov).textContent = aviso;
     $('#lkMsg', ov).classList.add('erro');
     setTimeout(function(){ errando = false; draw(); }, 900);
   };
@@ -4727,25 +4740,31 @@ function mostrarTrava(){
     haptic(8);
   };
   const tentar = async function(){
-    if(await lockConfere(pin)) abrir(); else erro();
+    if(lockEspera()){ pin = ''; draw(); return; }
+    if(await lockConfere(pin)){ lockAcertou(); abrir(); return; }
+    lockErrou();
+    const c = lockCfg() || {}, falta = 5 - (c.falhas || 0);
+    erro(lockEspera() ? lockEsperaTexto(lockEspera()) : (falta <= 2 ? 'Código errado. Mais '+falta+(falta === 1 ? ' tentativa' : ' tentativas')+' antes de esperar.' : null));
   };
   draw(); requestAnimationFrame(function(){ ov.classList.add('on'); });
   ov.addEventListener('click', async function(ev){
     const b = ev.target.closest('[data-lk]'); if(!b) return;
     const v = b.getAttribute('data-lk');
     if(v === 'apagar'){ pin = pin.slice(0, -1); draw(); haptic(3); return; }
-    if(v === 'bio'){ try{ if(await bioEntrar()) abrir(); }catch(e){ $('#lkMsg', ov).textContent = 'Não deu para usar a biometria. Use o código.'; } return; }
+    if(v === 'bio'){ try{ if(await bioEntrar()){ lockAcertou(); abrir(); } }catch(e){ $('#lkMsg', ov).textContent = 'Não deu para usar a biometria. Use o código.'; } return; }
     if(v === 'esqueci'){ lockEsqueci(); return; }
+    if(lockEspera()){ haptic(12); return; }
     if(pin.length >= 4) return;
+    if(!pin.length) aviso = '';
     pin += v; draw(); haptic(4);
     if(pin.length === 4) setTimeout(tentar, 120);
   });
   document.addEventListener('keydown', function tecla(ev){
     if(!document.getElementById('lockScreen')){ document.removeEventListener('keydown', tecla); return; }
-    if(/^[0-9]$/.test(ev.key) && pin.length < 4){ pin += ev.key; draw(); if(pin.length === 4) setTimeout(tentar, 120); }
+    if(/^[0-9]$/.test(ev.key) && pin.length < 4 && !lockEspera()){ if(!pin.length) aviso = ''; pin += ev.key; draw(); if(pin.length === 4) setTimeout(tentar, 120); }
     else if(ev.key === 'Backspace'){ pin = pin.slice(0, -1); draw(); }
   });
-  if(lockCfg() && lockCfg().bio) setTimeout(function(){ bioEntrar().then(function(ok){ if(ok) abrir(); }).catch(function(){}); }, 350);
+  if(lockCfg() && lockCfg().bio) setTimeout(function(){ bioEntrar().then(function(ok){ if(ok){ lockAcertou(); abrir(); } }).catch(function(){}); }, 350);
 }
 function lockEsqueci(){
   const logado = contaUser();
@@ -5049,7 +5068,7 @@ function talvezFechamento(tent){
 /* ================= planejar ================= */
 $('#planSeg').addEventListener('click', function(ev){ const b = ev.target.closest('button'); if(!b) return; segSet($('#planSeg'), b); V.plan = b.getAttribute('data-s'); renderPlanejar(); });
 bindMonthPill($('#planMonth'), function(){ return V.ym; }, function(ym){ V.ym = ym; renderPlanejar(); });
-function renderPlanejar(){ $('#planLab').textContent = monthLabel(V.ym); if(V.plan === 'orc') renderLimites(); else if(V.plan === 'fixas') renderFixas(); else renderMetas(); animateIn($('#plan')); }
+function renderPlanejar(){ $('#planLab').textContent = monthLabel(V.ym); if(V.plan === 'orc') renderLimites(); else if(V.plan === 'cartoes') renderCartoes(); else if(V.plan === 'fixas') renderFixas(); else renderMetas(); animateIn($('#plan')); }
 function renderLimites(){
   const act = live(mList(V.ym)), by = {};
   act.forEach(function(e){ if(e.t === 'out') by[e.cat] = (by[e.cat]||0) + e.v; });
@@ -5059,7 +5078,6 @@ function renderLimites(){
   const sobra = inc - Math.max(tot, gasto);
   let h = '<div class="card sum"><small>Sobra prevista em '+MES[+V.ym.slice(5,7)-1]+'</small><div class="hnum '+(sobra > 0 ? 'pos' : (sobra < 0 ? 'neg' : ''))+'">'+fit(sobra)+'</div>'+
     '<div class="sumr"><span>Limites <b>'+fit(tot)+'</b></span><span>Gasto <b class="neg">'+fit(gasto)+'</b></span></div></div>';
-  h += cartoesHTML();
   const comLim = cats.filter(function(c){ return bud[c]; }), semLim = cats.filter(function(c){ return !bud[c]; });
   h += '<div class="sech"><b>Seus limites</b><button type="button" class="sech-a" data-limnew>+ Novo</button></div>';
   if(!comLim.length) h += '<div class="group"><div class="empty">'+sq('#8E8E93','target','lg',22)+'<b>Nenhum limite ainda</b>Toque em "+ Novo" ou em "Definir" numa categoria para combinar quanto gastar por mês.</div></div>';
@@ -5121,9 +5139,10 @@ function perguntarAjuste(dif){
   }, false, 'Lançar ajuste');
 }
 /* ---------- cartões ---------- */
+function renderCartoes(){ $('#plan').innerHTML = cartoesHTML(); }
 function cartoesHTML(){
   const cs = cartoes();
-  let h = '<div class="sech cc-h"><b>Cartões</b><button type="button" class="sech-a" data-cc="new">+ Novo</button></div>';
+  let h = '<div class="sech cc-h" style="margin-top:8px"><b>Seus cartões</b><button type="button" class="sech-a" data-cc="new">+ Novo</button></div>';
   if(!cs.length) return h + '<div class="group"><div class="empty">'+sq('#8E8E93','card','lg',22)+'<b>Nenhum cartão</b>Cadastre seus cartões para acompanhar a fatura aberta, o limite e as datas de fechamento e vencimento.</div></div>';
   h += cs.map(function(c){
     const F = ccFaturas(c), f = F.aberta, fch = F.fechada;
@@ -5181,7 +5200,7 @@ function openCartao(c){
           if(mudou) saveMonth(ym); });
       }
     }
-    saveConfig(); closeSheet(); renderLimites(); haptic(8); island(nova ? 'Cartão criado' : 'Cartão salvo');
+    saveConfig(); closeSheet(); renderPlanejar(); haptic(8); island(nova ? 'Cartão criado' : 'Cartão salvo');
   }});
   $('#ccCores', sh).addEventListener('click', function(ev){ const b = ev.target.closest('[data-cor]'); if(!b) return;
     cor = b.getAttribute('data-cor'); haptic(4);
@@ -5190,8 +5209,8 @@ function openCartao(c){
     if(!ev.target.closest('[data-cc-del]')) return;
     const pos = cartoes().indexOf(c);
     S.config.cartoes = cartoes().filter(function(x){ return x.id !== c.id; });
-    saveConfig(); closeSheet(); renderLimites(); haptic(8);
-    island('Cartão excluído', function(){ cartoes().splice(Math.max(0, pos), 0, c); saveConfig(); renderLimites(); });
+    saveConfig(); closeSheet(); renderPlanejar(); haptic(8);
+    island('Cartão excluído', function(){ cartoes().splice(Math.max(0, pos), 0, c); saveConfig(); renderPlanejar(); });
   });
   if(nova) setTimeout(function(){ $('#ccNome', sh).focus({preventScroll:true}); }, 420);
 }
@@ -5243,7 +5262,7 @@ function renderFixas(){
     h += '<div class="group">' + fx.map(function(f){
       const done = launched(f.id, V.ym);
       return '<div class="cell" data-fid="'+f.id+'" style="--inset:68px"><span class="cal"><i>'+MES3[+V.ym.slice(5,7)-1].toUpperCase()+'</i><b>'+Math.min(f.dia, lastDay(V.ym))+'</b></span>'+
-        '<div class="grow"><div class="t">'+esc(f.nome)+'</div><div class="s">'+esc(f.cat)+'</div></div>'+
+        '<button type="button" class="grow abtn" data-fx="edit" aria-label="Editar '+esc(f.nome)+'"><div class="t">'+esc(f.nome)+'</div><div class="s">'+esc(f.cat)+' · editar</div></button>'+
         '<div style="text-align:right"><div class="amt '+(f.t==='in'?'in':'out')+'">'+(f.varia && !f.v ? '<span class="fx-varia">valor varia</span>' : (f.t==='in'?'+':'−')+money(f.v)+(f.varia ? '<small class="fx-ap">aprox.</small>' : ''))+'</div>'+
         (done ? '<div style="font-size:13px;font-weight:600;color:var(--green-t)">Lançada</div>' : '<button type="button" class="btn tinted sm" data-fx="go" style="margin-top:4px;height:28px;font-size:14px">Lançar</button>')+'</div>'+
         '<button type="button" class="check" data-fx="del" aria-label="Remover conta fixa">'+ic('x',16,2.4)+'</button></div>';
@@ -5276,23 +5295,51 @@ function autoFixos(){
   if(n > 0){ render(); island(n+(n === 1 ? ' conta fixa lançada' : ' contas fixas lançadas')+' como pendente'); }
   return n;
 }
-function openFixo(){
-  const st = { t:'out', area:'pessoal', cat:S.config.cats.out[0] };
-  const catOpts = function(t){ return S.config.cats[t].map(function(c){ return '<option>'+esc(c)+'</option>'; }).join(''); };
-  let h = segHTML('xType', [['out','Saída'],['in','Entrada']], 'out', 'v');
-  h += '<div class="group"><label class="cell"><input id="xNome" class="inl-left" type="text" maxlength="60" placeholder="Nome, como Aluguel ou Internet" aria-label="Nome"></label>';
-  h += '<label class="cell"><span class="t grow" id="xValL">Valor</span><input id="xVal" class="inl" type="text" inputmode="decimal" placeholder="R$ 0,00" style="width:130px"></label>';
-  h += '<div class="cell"><span class="t grow">O valor muda todo mês</span><label class="switch"><input type="checkbox" id="xVaria" aria-label="O valor muda todo mês"><span></span></label></div>';
-  h += '<label class="cell"><span class="t grow">Dia do vencimento</span><input id="xDia" class="inl" type="number" min="1" max="31" inputmode="numeric" placeholder="10" style="width:70px"></label>';
-  h += '<button type="button" class="cell drow" id="xCatB" aria-expanded="false"><span class="t grow">Categoria</span><span class="v" id="xCatT">'+esc(S.config.cats.out[0])+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+drawerEl('xdCat','in-group');
-  const sh = openSheet({ title:'Nova conta fixa', action:'Salvar', html:h, onAction:function(){
+function openFixo(f){
+  const nova = !f;
+  const st = { t:f ? f.t : 'out', area:f ? (f.area || 'pessoal') : 'pessoal', cat:f ? f.cat : S.config.cats.out[0] };
+  let h = segHTML('xType', [['out','Saída'],['in','Entrada']], st.t, 'v');
+  h += '<div class="group"><label class="cell"><input id="xNome" class="inl-left" type="text" maxlength="60" placeholder="Nome, como Aluguel ou Internet" aria-label="Nome" value="'+(f ? esc(f.nome) : '')+'"></label>';
+  h += '<label class="cell"><span class="t grow" id="xValL">'+(f && f.varia ? 'Valor de sempre' : 'Valor')+'</span><input id="xVal" class="inl" type="text" inputmode="decimal" placeholder="'+(f && f.varia ? 'opcional' : 'R$ 0,00')+'" style="width:130px" value="'+(f && f.v ? toInput(f.v) : '')+'"></label>';
+  h += '<div class="cell"><span class="t grow">O valor muda todo mês</span><label class="switch"><input type="checkbox" id="xVaria"'+(f && f.varia ? ' checked' : '')+' aria-label="O valor muda todo mês"><span></span></label></div>';
+  h += '<label class="cell"><span class="t grow">Dia do vencimento</span><input id="xDia" class="inl" type="number" min="1" max="31" inputmode="numeric" placeholder="10" style="width:70px" value="'+(f ? f.dia : '')+'"></label>';
+  h += '<button type="button" class="cell drow" id="xCatB" aria-expanded="false"><span class="t grow">Categoria</span><span class="v" id="xCatT">'+esc(st.cat)+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+drawerEl('xdCat','in-group');
+  h += '</div>';
+  if(!nova) h += '<div class="sec-f">As contas deste mês em diante que ainda estão pendentes mudam junto. As que já foram pagas ficam como estão.</div>'+
+    '<button type="button" class="btn full danger" data-fx-del style="margin-top:14px">Excluir conta fixa</button>';
+  const sh = openSheet({ title:nova ? 'Nova conta fixa' : 'Editar conta fixa', action:'Salvar', html:h, onAction:function(){
     const nome = $('#xNome', sh).value.trim(), v = parseMoney($('#xVal', sh).value), dia = Math.max(1, Math.min(31, +$('#xDia', sh).value || 1));
     if(!nome){ island('Dê um nome para a conta', null, true); return; }
     const varia = $('#xVaria', sh).checked;
     if(!varia && (!v || v <= 0)){ island('Coloque o valor', null, true); return; }
-    S.config.fixos.push({ id:'f'+uid(), nome:nome, v:v || 0, dia:dia, t:st.t, cat:st.cat, area:st.area, met:'', varia:varia, from:ymAdd(ymNow(),1) });
-    saveConfig(); closeSheet(); renderFixas(); island('Conta fixa salva');
+    if(nova){
+      S.config.fixos.push({ id:'f'+uid(), nome:nome, v:v || 0, dia:dia, t:st.t, cat:st.cat, area:st.area, met:'', varia:varia, from:ymAdd(ymNow(),1) });
+      saveConfig(); closeSheet(); renderFixas(); island('Conta fixa salva'); return;
+    }
+    Object.assign(f, { nome:nome, v:v || 0, dia:dia, t:st.t, cat:st.cat, area:st.area, varia:varia });
+    // as pendentes deste mês em diante acompanham a mudança
+    let n = 0; const ini = ymNow();
+    Object.keys(S.months).forEach(function(ym){
+      if(ym < ini) return; let mudou = false;
+      mList(ym).forEach(function(e){
+        if(e.fx !== f.id || e.del || e.st !== 'pend') return;
+        e.desc = nome; e.cat = st.cat; e.t = st.t; e.fv = varia ? 1 : null;
+        if(!varia || v) e.v = v || 0;
+        e.d = ym+'-'+pad(Math.min(dia, lastDay(ym)));
+        mudou = true; n++;
+      });
+      if(mudou) saveMonth(ym);
+    });
+    saveConfig(); closeSheet(); renderFixas(); haptic(8);
+    island(n ? 'Conta fixa salva. '+n+(n === 1 ? ' pendente atualizada' : ' pendentes atualizadas') : 'Conta fixa salva');
   }});
+  if(!nova) sh.addEventListener('click', function(ev){
+    if(!ev.target.closest('[data-fx-del]')) return;
+    const pos = S.config.fixos.indexOf(f);
+    S.config.fixos = S.config.fixos.filter(function(x){ return x.id !== f.id; });
+    saveConfig(); closeSheet(); renderFixas(); haptic(8);
+    island('Conta fixa removida', function(){ S.config.fixos.splice(Math.max(0, pos), 0, f); saveConfig(); renderFixas(); });
+  });
   sh.addEventListener('change', function(ev){
     if(ev.target.id !== 'xVaria') return;
     const on = ev.target.checked;
@@ -5305,7 +5352,7 @@ function openFixo(){
 
   });
   pickers(sh, [{ trigger:'#xCatB', drawer:'#xdCat', kind:'cat', type:function(){ return st.t; }, get:function(){ return st.cat; }, set:function(c){ st.cat = c; $('#xCatT', sh).textContent = c; if(S.config.fotoCats.indexOf(c) > -1) st.area = 'foto'; } }]);
-  setTimeout(function(){ $('#xNome', sh).focus({preventScroll:true}); }, 420);
+  if(nova) setTimeout(function(){ $('#xNome', sh).focus({preventScroll:true}); }, 420);
 }
 const MCOL = ['#FF9500','#007AFF','#AF52DE','#34C759','#FF2D55','#30B0C7'];
 function renderMetas(){
@@ -5349,15 +5396,26 @@ function openMeta(m){
   if(nova) setTimeout(function(){ $('#gNome', sh).focus({preventScroll:true}); }, 420);
 }
 function openAporte(m){
+  const outs = S.config.cats.out, mets = metsTodos();
+  const st = { cat: outs.indexOf('Outros') > -1 ? 'Outros' : outs[0], met: mets.indexOf('Pix') > -1 ? 'Pix' : (mets[0] || '') };
   const h = '<div class="amount"><span>R$</span><input id="apVal" type="text" inputmode="decimal" placeholder="0" aria-label="Valor" style="width:3ch"></div>'+
-    '<div class="group"><div class="cell"><span class="t grow">Lançar como saída no histórico</span><label class="switch"><input type="checkbox" id="apReg" aria-label="Lançar como saída no histórico"><span></span></label></div></div>'+
+    '<div class="group"><div class="cell"><span class="t grow">Lançar como saída no histórico</span><label class="switch"><input type="checkbox" id="apReg" aria-label="Lançar como saída no histórico"><span></span></label></div>'+
+      '<div id="apMais" hidden>'+
+        '<button type="button" class="cell drow" id="apMetB" aria-expanded="false"><span class="t grow">Forma</span><span class="v" id="apMetT">'+esc(st.met)+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+
+        '<button type="button" class="cell drow" id="apCatB" aria-expanded="false"><span class="t grow">Categoria</span><span class="v" id="apCatT">'+esc(st.cat)+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+
+      '</div></div>'+
     '<div class="sec-f">Ligue se o dinheiro saiu da sua conta para uma reserva separada.</div>';
   const sh = openSheet({ title:m.nome, action:'Guardar', html:h, small:true, onAction:function(){
     const v = parseMoney($('#apVal', sh).value); if(!v || v <= 0){ island('Coloque um valor', null, true); return; }
     m.guardado += v; (m.hist = m.hist || []).push({ d:todayISO(), v:v });
-    if($('#apReg', sh).checked){ const d = todayISO(); ensureM(ymOf(d)).push({ id:uid(), d:d, t:'out', v:v, desc:'Guardado: '+m.nome, cat:'Outros', area:'pessoal', met:'Pix', st:'pago', obs:'Meta', fx:null, q:null, del:null, ts:nowISO() }); saveMonth(ymOf(d)); }
+    if($('#apReg', sh).checked){ const d = todayISO(); ensureM(ymOf(d)).push({ id:uid(), d:d, t:'out', v:v, desc:'Guardado: '+m.nome, cat:st.cat, area:'pessoal', met:st.met, cc:(cartaoPorNome(st.met)||{}).id || null, st:'pago', obs:'Meta', fx:null, q:null, del:null, ts:nowISO() }); saveMonth(ymOf(d)); }
     saveConfig(); closeSheet(); renderPlanejar(); island(money(v)+' guardados');
   }});
+  sh.addEventListener('change', function(ev){ if(ev.target.id === 'apReg') $('#apMais', sh).hidden = !ev.target.checked; });
+  pickers(sh, [
+    { trigger:'#apMetB', kind:'met', get:function(){ return st.met; }, set:function(x){ st.met = x; $('#apMetT', sh).textContent = x; } },
+    { trigger:'#apCatB', kind:'cat', type:function(){ return 'out'; }, get:function(){ return st.cat; }, set:function(c){ st.cat = c; $('#apCatT', sh).textContent = c; } }
+  ]);
   const inp = $('#apVal', sh); inp.addEventListener('input', function(){ inp.style.width = Math.max(2, inp.value.length + .6)+'ch'; });
   setTimeout(function(){ inp.focus({preventScroll:true}); }, 420);
 }
@@ -5366,6 +5424,7 @@ $('#plan').addEventListener('click', function(ev){
   if(fx){
     const a = fx.getAttribute('data-fx');
     if(a === 'new') return openFixo();
+    if(a === 'edit'){ const fe = S.config.fixos.filter(function(x){ return x.id === fx.closest('[data-fid]').getAttribute('data-fid'); })[0]; if(fe) openFixo(fe); return; }
     if(a === 'all'){ let n = 0; const variaveis = [];
       S.config.fixos.forEach(function(f){ if(!launched(f.id, V.ym)){ launchFixo(f); n++; if(f.varia) variaveis.push(f); } });
       saveMonth(V.ym); saveConfig(); renderFixas(); island(n+(n === 1 ? ' conta lançada' : ' contas lançadas')+' como pendentes');
@@ -5388,14 +5447,14 @@ $('#plan').addEventListener('click', function(ev){
     if(acao === 'pagar'){
       const F = ccFaturas(card), ch = F.fechada;
       card.pagas = card.pagas || {}; card.pagas[ch.fim] = { em:todayISO(), v:ch.total };
-      saveConfig(); renderLimites(); haptic(10);
-      island('Fatura de '+money(ch.total)+' marcada como paga', function(){ delete card.pagas[ch.fim]; saveConfig(); renderLimites(); });
+      saveConfig(); renderPlanejar(); haptic(10);
+      island('Fatura de '+money(ch.total)+' marcada como paga', function(){ delete card.pagas[ch.fim]; saveConfig(); renderPlanejar(); });
       return; }
     if(acao === 'despagar'){
       const F = ccFaturas(card), ch = F.fechada, antes = card.pagas && card.pagas[ch.fim];
       if(!antes) return;
-      delete card.pagas[ch.fim]; saveConfig(); renderLimites(); haptic(6);
-      island('Fatura voltou a aparecer como a pagar', function(){ card.pagas[ch.fim] = antes; saveConfig(); renderLimites(); });
+      delete card.pagas[ch.fim]; saveConfig(); renderPlanejar(); haptic(6);
+      island('Fatura voltou a aparecer como a pagar', function(){ card.pagas[ch.fim] = antes; saveConfig(); renderPlanejar(); });
       return; }
   }
   const mt = ev.target.closest('[data-mt]');
