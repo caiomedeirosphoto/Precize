@@ -2541,7 +2541,7 @@ const LS = 'caixa-clique-v1';
 let DB = null, mode = 'local', saveErr = false;
 const seen = {}, chain = {}, timers = {};
 function setStatus(kind, txt){ const f = $('#sideFoot'); f.className = 'side-foot' + (kind ? ' '+kind : ''); f.lastElementChild.textContent = txt; }
-function idleStatus(){ if(saveErr) return setStatus('err','Erro ao salvar'); if(STANDALONE && !navigator.onLine) return setStatus('saving','Sem internet, salva quando voltar'); setStatus('', mode === 'cloud' ? 'Salvo na nuvem' : 'Salvo neste aparelho'); }
+function idleStatus(){ if(V.esperandoNuvem) return setStatus('saving','Conectando à sua conta'); if(saveErr) return setStatus('err','Erro ao salvar'); if(STANDALONE && !navigator.onLine) return setStatus('saving','Sem internet, salva quando voltar'); setStatus('', mode === 'cloud' ? 'Salvo na nuvem' : 'Salvo neste aparelho'); }
 window.addEventListener('online', function(){ idleStatus(); });
 window.addEventListener('offline', function(){ idleStatus(); });
 function saveLocal(){ try{ localStorage.setItem(LS, JSON.stringify({ config:S.config, months:S.months, stamps:S.stamps })); return true; }catch(e){ return false; } }
@@ -3373,7 +3373,7 @@ document.addEventListener('visibilitychange', function(){
   if(document.visibilityState !== 'visible') return;
   const t = todayISO();
   if(CS.dAuto && CS.d !== t){ CS.d = t; const el = $('#oDateT'); if(el) el.textContent = dayChip(t); }
-  if(V.lastDay && V.lastDay !== t){ setHeadSub(); if(ymOf(V.lastDay) !== ymOf(t)) autoFixos(); if(V.tab === 'lancar' || V.tab === 'resumo') render(); }
+  if(V.lastDay && V.lastDay !== t){ setHeadSub(); if(ymOf(V.lastDay) !== ymOf(t)){ autoFixos(); talvezFechamento(); } if(V.tab === 'lancar' || V.tab === 'resumo') render(); }
   V.lastDay = t;
 });
 V.lastDay = todayISO();
@@ -4036,6 +4036,7 @@ async function sobreCarregar(){
   const db = contaUser() && window.__FB.db(); if(!db) return;
   try{
     const d = await db.doc('perfil/sobre').get(), n = d.exists ? (d.data() || {}) : null, l = sobreLocal();
+    if(d.metadata && d.metadata.fromCache && !n) return;   // sem resposta da nuvem: não grava nada por cima (tenta de novo ao conectar)
     if(n && (!l.atualizadoEm || (n.atualizadoEm || '') > l.atualizadoEm)){ try{ localStorage.setItem(SB_KEY, JSON.stringify(n)); }catch(e){} applyJeito(); render(); }
     else if(!n && l.done){ db.doc('perfil/sobre').set(l).catch(function(){}); }
   }catch(e){}
@@ -4358,7 +4359,8 @@ function importarExtrato(){
     const fs = Array.from(inp.files || []); if(!fs.length) return;
     let itens = [], erros = 0, semTexto = 0;
     island('Lendo o extrato...');
-    for(const f of fs){
+    for(let fi = 0; fi < fs.length; fi++){
+      const f = fs[fi];
       try{
         const buf = await f.arrayBuffer();
         const ehPdf = /\.pdf$/i.test(f.name) || impEhPDF(buf);
@@ -4372,6 +4374,7 @@ function importarExtrato(){
           lidos = /<STMTTRN>/i.test(txt) ? impOFX(txt) : impCSV(txt);
         }
         if(!lidos.length) erros++;
+        lidos.forEach(function(x){ x.arq = fi; });
         itens = itens.concat(lidos);
       }catch(e){ console.error(e); erros++; }
     }
@@ -4389,12 +4392,17 @@ function abrirImportacao(brutos){
     existentes[impChave(e)] = true;
     const k = e.t + '|' + e.v; (porValor[k] = porValor[k] || []).push(e);
   });
-  const chaves = {};
+  /* duas compras iguais no mesmo dia são compras de verdade. Só some o que se repete entre arquivos
+     (dois extratos do mesmo período): de cada lançamento fica a maior quantidade que um arquivo trouxe */
+  const chaveImp = function(b){ return b.id ? 'id|' + b.id : impChave(b); };
+  const porArq = {}, cabe = {}, usados = {};
+  brutos.forEach(function(b){ const k = chaveImp(b), a = k + '#' + (b.arq || 0); porArq[a] = (porArq[a] || 0) + 1; cabe[k] = Math.max(cabe[k] || 0, porArq[a]); });
   const itens = [];
   brutos.sort(function(a,b){ return a.d === b.d ? 0 : (a.d < b.d ? 1 : -1); }).forEach(function(b){
+    const ck = chaveImp(b);
+    if((usados[ck] || 0) >= cabe[ck]) return;               // já veio em outro arquivo
+    usados[ck] = (usados[ck] || 0) + 1;
     const k = impChave(b);
-    if(chaves[k]) return;                                  // repetido dentro do próprio arquivo
-    chaves[k] = true;
     const candidatos = porValor[b.t + '|' + b.v] || [];
     let nivel = '';
     candidatos.forEach(function(e){ const r = impMesmo(e, b); if(r === 'igual') nivel = 'igual'; else if(r === 'parecido' && !nivel) nivel = 'parecido'; });
@@ -4750,15 +4758,15 @@ function lockEsqueci(){
   });
 }
 /* ---------- ligar e desligar nas preferências ---------- */
-function abrirTrava(){
+function abrirTrava(trocar){
   const c = lockCfg();
-  if(lockLigado()){ abrirTravaLigada(c); return; }
+  if(lockLigado() && !trocar){ abrirTravaLigada(c); return; }
   let etapa = 1, pin1 = '', pin = '', erro = '';
-  const sh = openSheet({ title:'Travar o app', html:'<div id="lkSet"></div>' });
+  const sh = openSheet({ title:trocar ? 'Trocar o código' : 'Travar o app', html:'<div id="lkSet"></div>' });
   const teclas = ['1','2','3','4','5','6','7','8','9','','0','apagar'];
   const draw = function(){
     $('#lkSet', sh).innerHTML =
-      '<p class="sh-p">'+(etapa === 1 ? 'Escolha um código de 4 dígitos. Ele será pedido ao abrir o app.' : 'Digite o código de novo para confirmar.')+'</p>'+
+      '<p class="sh-p">'+(etapa === 1 ? (trocar ? 'Escolha o código novo, de 4 dígitos. O antigo vale até você confirmar.' : 'Escolha um código de 4 dígitos. Ele será pedido ao abrir o app.') : 'Digite o código de novo para confirmar.')+'</p>'+
       '<div class="lk-dots meio">'+[0,1,2,3].map(function(i){ return '<i'+(i < pin.length ? ' class="on"' : '')+'></i>'; }).join('')+'</div>'+
       '<p class="lk-erro">'+esc(erro)+'</p>'+
       '<div class="lk-pad set">'+teclas.map(function(t){
@@ -4778,9 +4786,9 @@ function abrirTrava(){
     if(etapa === 1){ setTimeout(function(){ pin1 = pin; pin = ''; etapa = 2; draw(); haptic(6); }, 160); return; }
     if(pin !== pin1){ setTimeout(function(){ erro = 'Os códigos não bateram. Comece de novo.'; etapa = 1; pin1 = ''; pin = ''; draw(); haptic(12); }, 160); return; }
     await lockDefinir(pin);
-    closeSheet(); haptic(10); island('App travado com código');
+    closeSheet(); haptic(10); island(trocar ? 'Código trocado' : 'App travado com código');
     if(V.tab === 'conta') renderConta();
-    if(await bioDisponivel()) setTimeout(perguntarBio, 500);
+    if(!trocar && !(lockCfg() || {}).bio && await bioDisponivel()) setTimeout(perguntarBio, 500);
   });
 }
 function perguntarBio(){
@@ -4809,13 +4817,12 @@ function abrirTravaLigada(c){
                 : '<button type="button" class="btn full soft" data-lk-bio-on style="margin-top:10px">Ativar Face ID ou digital</button>')+
     '<button type="button" class="btn full danger" data-lk-off style="margin-top:10px">Desligar a trava</button>' });
   sh.addEventListener('click', async function(ev){
-    if(ev.target.closest('[data-lk-trocar]')){ closeSheet(); setTimeout(function(){ lockDesligarSemAviso(); abrirTrava(); }, 300); return; }
+    if(ev.target.closest('[data-lk-trocar]')){ closeSheet(); setTimeout(function(){ abrirTrava(true); }, 300); return; }
     if(ev.target.closest('[data-lk-bio-off]')){ const cc = lockCfg() || {}; cc.bio = false; delete cc.credId; lockSalvar(cc); closeSheet(); island('Face ID desligado'); if(V.tab === 'conta') renderConta(); return; }
     if(ev.target.closest('[data-lk-bio-on]')){ closeSheet(); setTimeout(perguntarBio, 300); return; }
     if(ev.target.closest('[data-lk-off]')){ lockDesligar(); closeSheet(); island('Trava desligada'); if(V.tab === 'conta') renderConta(); return; }
   });
 }
-function lockDesligarSemAviso(){ const c = lockCfg() || {}; delete c.hash; delete c.sal; lockSalvar(c); }
 /* ---------- trava sozinha ao voltar para o app ---------- */
 document.addEventListener('visibilitychange', function(){
   if(document.hidden){ lockUltimo = Date.now(); return; }
@@ -5012,18 +5019,23 @@ function abrirFechamento(ym, auto){
     }
     if(ev.target.closest('[data-fe-ver]')){
       fechados()[ym] = 1; saveConfig(); closeSheet();
-      setTimeout(function(){ V.ym = ym; V.rMode = 'mes'; go('resumo'); renderResumo(); }, 280);
+      setTimeout(function(){ V.rDate = ym+'-01'; V.rMode = 'mes'; go('resumo'); }, 280);
       return;
     }
   });
 }
 /* mostra sozinho quando o mês vira, sem atrapalhar quem está entrando */
-function talvezFechamento(){
-  if(document.body.classList.contains('lg-aberto') || document.body.classList.contains('ob-open') || document.body.classList.contains('lock-open')) return;
+function talvezFechamento(tent){
+  if(STANDALONE && mode !== 'cloud') return;                  // só depois de carregar os dados da conta
   const ym = fechamentoPendente(); if(!ym) return;
+  const b = document.body;
+  if(b.classList.contains('login-open') || b.classList.contains('ob-open') || b.classList.contains('lock-open') || b.classList.contains('imp-open') || document.querySelector('#sheetWrap.on, #popWrap.on, .ob')){
+    if((tent || 0) < 20) setTimeout(function(){ talvezFechamento((tent || 0) + 1); }, 3000);   // espera a tela ficar livre
+    return;
+  }
   setTimeout(function(){
-    if(document.querySelector('#sheetWrap.on') || document.body.classList.contains('lock-open')) return;
-    abrirFechamento(ym, true);
+    if(document.querySelector('#sheetWrap.on, #popWrap.on, .ob') || b.classList.contains('lock-open') || b.classList.contains('login-open')){ talvezFechamento((tent || 0) + 1); return; }
+    if(fechamentoPendente() === ym) abrirFechamento(ym, true);
   }, 1400);
 }
 
@@ -5244,7 +5256,7 @@ function launchFixo(f, ym){
 }
 /* no começo de cada mês as fixas entram sozinhas como pendentes (uma vez só por mês) */
 function autoFixos(){
-  if(!S.config.autoFixos) return 0;
+  if(!S.config.autoFixos || (STANDALONE && mode !== 'cloud')) return 0;   // espera os dados da conta chegarem
   const ym = ymNow(); let n = 0;
   S.config.fixos.forEach(function(f){
     if(f.from && ym < f.from) return;
@@ -5285,7 +5297,7 @@ function openFixo(){
 
 
   });
-  pickers(sh, [{ trigger:'#xCatB', drawer:'#xdCat', kind:'cat', type:function(){ return st.t; }, get:function(){ return st.cat; }, set:function(c){ st.cat = c; $('#xCatT', sh).textContent = c; if(S.config.fotoCats.indexOf(c) > -1){ st.area = 'foto'; segSet($('#xArea', sh), $('#xArea [data-a="foto"]', sh)); } } }]);
+  pickers(sh, [{ trigger:'#xCatB', drawer:'#xdCat', kind:'cat', type:function(){ return st.t; }, get:function(){ return st.cat; }, set:function(c){ st.cat = c; $('#xCatT', sh).textContent = c; if(S.config.fotoCats.indexOf(c) > -1) st.area = 'foto'; } }]);
   setTimeout(function(){ $('#xNome', sh).focus({preventScroll:true}); }, 420);
 }
 const MCOL = ['#FF9500','#007AFF','#AF52DE','#34C759','#FF2D55','#30B0C7'];
@@ -5401,10 +5413,10 @@ function renderAjustes(){
   h += navRow('list','#34C759','Categorias de entrada', S.config.cats.in.length, 'cat-in');
   h += navRow('card','#5856D6','Formas de pagamento', S.config.mets.length, 'mets');
   h += navRow('trash','#8E8E93','Excluídos recentemente', trashN || '', 'trash');
+  h += '</div>';
   h += '<div class="sec-h">Saldo</div><div class="group">'+
     navRow('bank','#30B0C7','Saldo em conta', saldoConf() ? money0(saldoHoje()) : 'Informar', 'saldo')+'</div>'+
     '<div class="sec-f">Informe quanto você tem na conta. O app acompanha daqui pra frente e avisa quando não bater.</div>';
-  h += '</div>';
 
   h += '<div class="sec-h">Dados</div><div class="group">';
   h += '<div class="cell icon-row">'+sq('#007AFF','cloud','',17)+'<span class="t grow">Armazenamento</span><span class="v">'+(mode === 'cloud' ? 'Nuvem' : 'Este aparelho')+'</span></div>';
@@ -5520,17 +5532,17 @@ async function dataAction(a){
     $('#wBk', sh).addEventListener('click', function(){ dataAction('json'); });
     $('#wConf', sh).addEventListener('change', function(){ $('#wOk2', sh).disabled = !this.checked; });
     $('#wOk2', sh).addEventListener('click', async function(){
-      const ks = Object.keys(S.months);
-      S.months = {}; S.config.fxDone = {}; S.config.saldo = null; saveLocal(); saveConfig();
-      if(DB){ try{ for(let i=0;i<ks.length;i++) await DB.doc('months/'+ks[i]).delete(); }catch(e){} }
+      // o mês fica vazio na nuvem em vez de sumir: assim os outros aparelhos também zeram, e não devolvem os lançamentos
+      Object.keys(S.months).forEach(function(k){ S.months[k] = []; saveMonth(k); });
+      S.config.fxDone = {}; S.config.saldo = null; saveConfig();
       closeSheet(); V.ym = ymNow(); render(); haptic(10); island('Histórico apagado. O resto continua.');
     });
   }
   else if(a === 'wipe'){
     const sh = openSheet({ title:'Apagar tudo', small:true, html:'<p style="color:var(--label-2);font-size:15px;margin:4px 4px 18px;line-height:1.4;text-align:center">Some lançamentos, contas fixas, metas e ajustes. Não tem como desfazer. Baixe o backup antes se ainda não baixou.</p><button type="button" class="btn full red" id="wOk">Apagar todos os dados</button>' });
     $('#wOk', sh).addEventListener('click', async function(){
-      const ks = Object.keys(S.months); S.config = blankConfig(); S.months = {}; saveLocal();
-      if(DB){ try{ await DB.doc('config/main').set(JSON.parse(JSON.stringify(S.config))); for(let i=0;i<ks.length;i++) await DB.doc('months/'+ks[i]).delete(); }catch(e){} }
+      S.config = blankConfig(); saveConfig();
+      Object.keys(S.months).forEach(function(k){ S.months[k] = []; saveMonth(k); });   // vazio, não apagado (ver acima)
       closeSheet(); render(); island('Tudo apagado');
     });
   }
@@ -5541,14 +5553,19 @@ $('#fileIn').addEventListener('change', function(){
   rd.onload = function(){
     let d; try{ d = JSON.parse(String(rd.result)); }catch(e){ island('Arquivo inválido', null, true); return; }
     if(!d || !d.months){ island('Esse arquivo não é um backup do Precize', null, true); return; }
-    const vazio = !all().length && !S.config.quotes.length && !S.config.fixos.length && !S.config.metas.length;
+    const vazio = !all().length && !S.config.quotes.length && !S.config.fixos.length && !S.config.metas.length && !S.config.cartoes.length;
     const ids = {}; all().forEach(function(e){ ids[e.id] = 1; }); let n = 0;
     Object.keys(d.months).forEach(function(k){ (d.months[k]||[]).forEach(function(e){ if(!ids[e.id]){ ensureM(k).push(e); n++; } }); saveMonth(k); });
     if(d.config && vazio){ S.config = mergeConfig(clone(d.config)); saveConfig(); }
     else if(d.config){ const rc = mergeConfig(d.config);
       Object.keys(rc.budgets||{}).forEach(function(c){ if(!S.config.budgets[c]) S.config.budgets[c] = rc.budgets[c]; });
-      ['fixos','metas','quotes'].forEach(function(key){ rc[key].forEach(function(it){ if(!S.config[key].some(function(x){ return x.id === it.id; })) S.config[key].push(it); }); });
-      ['out','in'].forEach(function(k){ rc.cats[k].forEach(function(c){ if(S.config.cats[k].indexOf(c) === -1) S.config.cats[k].push(c); }); }); saveConfig(); }
+      ['fixos','metas','quotes','cartoes'].forEach(function(key){ rc[key].forEach(function(it){ if(!S.config[key].some(function(x){ return x.id === it.id || (key === 'cartoes' && x.nome === it.nome); })) S.config[key].push(it); }); });
+      ['out','in'].forEach(function(k){ rc.cats[k].forEach(function(c){ if(S.config.cats[k].indexOf(c) === -1) S.config.cats[k].push(c); }); });
+      rc.mets.forEach(function(m){ if(S.config.mets.indexOf(m) === -1 && !cartaoPorNome(m)) S.config.mets.push(m); });
+      if(!S.config.saldo && rc.saldo) S.config.saldo = rc.saldo;
+      Object.keys(rc.fechados || {}).forEach(function(k){ fechados()[k] = 1; });
+      Object.keys(rc.fxDone || {}).forEach(function(k){ S.config.fxDone[k] = 1; });
+      saveConfig(); }
     render(); island(n === 1 ? '1 lançamento restaurado' : n+' lançamentos restaurados');
   };
   rd.readAsText(f);
@@ -5566,20 +5583,50 @@ function render(){
 }
 
 /* ================= nuvem ================= */
+/* a conta já foi carregada da nuvem neste aparelho? Antes disso, o que está aqui não pode passar por cima da nuvem */
+const BASE_KEY = LS + ':base';
+function localConfiavel(){ const u = contaUser(); if(!u) return true; let b = null; try{ b = localStorage.getItem(BASE_KEY); }catch(e){} return b === u.uid; }
+function marcarConfiavel(){ const u = contaUser(); if(u){ try{ localStorage.setItem(BASE_KEY, u.uid); }catch(e){} } }
+/* sem resposta da nuvem no primeiro carregamento: espera e tenta de novo, sem gravar nada na conta */
+let nuvemT = null, nuvemN = 0;
+function esperarNuvem(){
+  DB = null; mode = 'local'; V.esperandoNuvem = true; idleStatus();
+  if(nuvemN === 0) island('Sem conexão com a nuvem. Seus dados aparecem assim que conectar.', null, true);
+  clearTimeout(nuvemT);
+  nuvemT = setTimeout(tentarNuvem, Math.min(30000, 3000 * Math.pow(2, nuvemN++)));
+}
+function tentarNuvem(){
+  clearTimeout(nuvemT); nuvemT = null;
+  if(!V.esperandoNuvem || !contaUser()) return;
+  syncCloud().then(function(){ if(mode === 'cloud'){ depoisDaNuvem(); fotoCarregar(); sobreCarregar(); } }, function(){});
+}
+window.addEventListener('online', function(){ if(V.esperandoNuvem) tentarNuvem(); });
 async function syncCloud(){
   const db = await useCap('db');
   if(!db){ mode = 'local'; idleStatus(); return; }
-  DB = db;
   let cfg, ms;
-  try{ cfg = await db.doc('config/main').get(); ms = await db.collection('months').get(); }catch(e){ DB = null; mode = 'local'; idleStatus(); return; }
-  const localHas = all().length > 0 || S.config.quotes.length || S.config.fixos.length || S.config.metas.length;
+  try{ cfg = await db.doc('config/main').get(); ms = await db.collection('months').get(); }catch(e){ cfg = null; ms = null; }
+  if(!ms) cfg = null;
+  const doServidor = !!cfg && !(cfg.metadata && cfg.metadata.fromCache) && !(ms.metadata && ms.metadata.fromCache);
+  const confia = !STANDALONE || localConfiavel();
+  if(!cfg || (!confia && !doServidor)){ if(STANDALONE && contaUser()) esperarNuvem(); else { DB = null; mode = 'local'; idleStatus(); } return; }
+  if(!contaUser() && STANDALONE) return;                        // saiu da conta enquanto carregava
+  DB = db; V.esperandoNuvem = false; nuvemN = 0; clearTimeout(nuvemT);
+  const mesclar = !confia;    // primeira vez desta conta neste aparelho: vale a nuvem, e o que foi lançado aqui antes entra junto
+  const localHas = all().length > 0 || S.config.quotes.length || S.config.fixos.length || S.config.metas.length || S.config.cartoes.length;
   const pushes = [];
   /* meses: fica a versão mais nova de cada um */
   const remoteIds = {};
   (ms.docs||[]).forEach(function(d){
     const b = clone(d.data()) || {}, p = 'months/'+d.id, loc = S.stamps[p];
     remoteIds[d.id] = 1;
-    if(localHas && loc && b.updatedAt && loc > b.updatedAt){ pushes.push(p); }
+    if(mesclar){
+      const rem = b.items || [], ids = {}; rem.forEach(function(e){ ids[e.id] = 1; });
+      const daqui = mList(d.id).filter(function(e){ return !ids[e.id]; });
+      S.months[d.id] = rem.concat(daqui);
+      if(daqui.length){ S.stamps[p] = nowISO(); pushes.push(p); } else S.stamps[p] = b.updatedAt || '';
+    }
+    else if(localHas && loc && b.updatedAt && loc > b.updatedAt){ pushes.push(p); }
     else { S.months[d.id] = b.items || []; S.stamps[p] = b.updatedAt || ''; }
     seen[p] = b.updatedAt;
   });
@@ -5587,11 +5634,11 @@ async function syncCloud(){
   /* ajustes */
   if(cfg.exists){
     const rc = clone(cfg.data()), loc = S.stamps['config/main'] || S.config.updatedAt;
-    if(localHas && loc && rc.updatedAt && loc > rc.updatedAt) pushes.push('config/main');
+    if(!mesclar && localHas && loc && rc.updatedAt && loc > rc.updatedAt) pushes.push('config/main');
     else { S.config = mergeConfig(rc); S.stamps['config/main'] = rc.updatedAt || ''; }
     seen['config/main'] = rc.updatedAt;
   } else if(localHas) pushes.push('config/main');
-  mode = 'cloud'; saveLocal(); idleStatus(); render();
+  mode = 'cloud'; marcarConfiavel(); saveLocal(); idleStatus(); render();
   for(let i=0;i<pushes.length;i++){
     const p = pushes[i];
     if(p === 'config/main') await push(p, S.config);
@@ -5618,11 +5665,12 @@ async function syncCloud(){
 
 /* ================= início ================= */
 /* ================= conta (app instalado) ================= */
-function clearLocalData(){ S.config = blankConfig(); S.months = {}; S.stamps = {}; saveLocal(); try{ localStorage.removeItem(LS+':perfil'); localStorage.removeItem(LS+':sobre'); localStorage.removeItem(LS+':dicas'); }catch(e){} applyJeito(); renderMe(); }
+function clearLocalData(){ S.config = blankConfig(); S.months = {}; S.stamps = {}; saveLocal(); try{ localStorage.removeItem(BASE_KEY); localStorage.removeItem(LS+':perfil'); localStorage.removeItem(LS+':sobre'); localStorage.removeItem(LS+':dicas'); }catch(e){} applyJeito(); renderMe(); }
 function cloudReset(){
   UNSUBS.splice(0).forEach(function(u){ try{ if(typeof u === 'function') u(); }catch(e){} });
   Object.keys(timers).forEach(function(k){ clearTimeout(timers[k]); timers[k] = null; });
   Object.keys(seen).forEach(function(k){ delete seen[k]; });
+  clearTimeout(nuvemT); nuvemT = null; nuvemN = 0; V.esperandoNuvem = false;
   DB = null; mode = 'local'; idleStatus();
 }
 let lgMode = 'in';
@@ -5651,9 +5699,10 @@ function onFbAuth(user){
   if(user){
     let last = ''; try{ last = localStorage.getItem(LS+':uid') || ''; }catch(e){}
     if(last && last !== user.uid){ clearLocalData(); render(); }
+    else if(last === user.uid){ try{ if(!localStorage.getItem(BASE_KEY)) localStorage.setItem(BASE_KEY, user.uid); }catch(e){} }   // já usava esta conta antes desta versão
     try{ localStorage.setItem(LS+':uid', user.uid); }catch(e){}
     hideLogin();
-    syncCloud().then(autoFixos, autoFixos);
+    syncCloud().then(depoisDaNuvem, depoisDaNuvem);
     renderMe(); fotoCarregar(); sobreCarregar();
     if(V.tab === 'ajustes') renderAjustes();
     if(V.tab === 'conta') renderConta();
@@ -5722,6 +5771,7 @@ async function fotoCarregar(){
   const db = contaUser() && window.__FB.db(); if(!db) return;
   try{
     const s = await db.doc('perfil/foto').get(), d = s.exists ? (s.data() || {}) : {}, pl = perfilLocal(), nova = d.img || '';
+    if(s.metadata && s.metadata.fromCache && !s.exists) return;   // sem resposta da nuvem: mantém a foto deste aparelho
     if(nova !== (pl.foto || '')){ pl.foto = nova; perfilSalvar(pl); renderMe(); if(V.tab === 'conta') renderConta(); }
   }catch(e){}
 }
@@ -6043,6 +6093,8 @@ function boot(){
     else if(!(window.__FB && window.__FB.user)) setTimeout(function(){ if(!window.__FB_LAST) showLogin(); }, 2500);
   } else { syncCloud().then(autoFixos, autoFixos); setTimeout(maybeOnboard, 700); setTimeout(talvezFechamento, 2200); }
 }
+/* depois de carregar os dados da conta: contas fixas do mês e fechamento do mês que passou */
+function depoisDaNuvem(){ autoFixos(); talvezFechamento(); }
 /* atalhos do ícone do app: ?novo=out, ?novo=in, ?ir=resumo */
 function atalhoDeEntrada(){
   let p; try{ p = new URLSearchParams(location.search); }catch(e){ return; }
@@ -6169,8 +6221,8 @@ if(!window.__FB_TEST){
     try{ db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
     catch(e){ db = F.getFirestore(app); }
     const embrulha = s => ({ id:s.id, exists:s.exists(), data:() => s.data(), metadata:{ hasPendingWrites:s.metadata.hasPendingWrites, fromCache:s.metadata.fromCache } });
-    const vazio = id => ({ id, exists:false, data:() => undefined, metadata:{} });
-    const lista = q => ({ docs:q.docs.map(embrulha), size:q.size, empty:q.empty, metadata:{ hasPendingWrites:q.metadata.hasPendingWrites } });
+    const vazio = id => ({ id, exists:false, data:() => undefined, metadata:{ fromCache:true } });
+    const lista = q => ({ docs:q.docs.map(embrulha), size:q.size, empty:q.empty, metadata:{ hasPendingWrites:q.metadata.hasPendingWrites, fromCache:q.metadata.fromCache } });
     const banco = uid => ({
       doc(p){
         const r = F.doc(db, 'users', uid, ...p.split('/'));
@@ -6184,7 +6236,7 @@ if(!window.__FB_TEST){
       collection(p){
         const c = F.collection(db, 'users', uid, p);
         return {
-          get: async () => { try{ return lista(await F.getDocs(c)); }catch(e){ try{ return lista(await F.getDocsFromCache(c)); }catch(e2){ return { docs:[], size:0, empty:true, metadata:{} }; } } },
+          get: async () => { try{ return lista(await F.getDocs(c)); }catch(e){ try{ return lista(await F.getDocsFromCache(c)); }catch(e2){ return { docs:[], size:0, empty:true, metadata:{ fromCache:true } }; } } },
           onSnapshot: (cb, err) => F.onSnapshot(c, q => cb(lista(q)), err)
         };
       }
