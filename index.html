@@ -539,6 +539,8 @@ input[data-bud]::placeholder{color:var(--tint);opacity:.85}
 .caption,.strip span,.stats span{font-weight:500;letter-spacing:0}
 .strip b,.stats b{font-weight:600;color:var(--label)}
 .strip b.pos{color:var(--green-t)} .strip b.neg{color:var(--red-t)}
+.strip small{display:block;font-size:11.5px;font-weight:600;color:var(--label-2);margin-top:1px;white-space:nowrap}
+body.private .strip small{filter:blur(6px)}
 .head-sub{font-weight:500}
 
 /* ícones tingidos, sem cor chapada */
@@ -1560,7 +1562,7 @@ body.cr-open{overflow:hidden}
 .sum small,.sum>small{font-size:13px;color:var(--label-2);font-weight:500}
 .hnum{font-family:var(--display);font-size:40px;font-weight:800;letter-spacing:-.035em;margin:2px 0 8px;font-variant-numeric:tabular-nums}
 .sumr{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--label-2)}
-.sumr b{color:var(--label);margin-left:4px} .sumr b.neg{color:var(--neg)} .sumr b.pos{color:var(--pos)}
+.sumr b{color:var(--label);margin-left:4px} .sumr b.neg{color:var(--neg)} .sumr b.pos{color:var(--pos)} .sumr b.warn{color:var(--warn)}
 button.lim{display:block;width:100%;text-align:left;color:inherit;font:inherit;padding:14px 16px !important;margin:0 0 10px;border:0;cursor:pointer;transition:transform .3s var(--pop-ease)}
 button.lim:active{transform:scale(.985)}
 .lt{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -2222,6 +2224,7 @@ body.private .fe-num,body.private .fe-io b,body.private .fe-linha b{filter:blur(
         <div class="lanc-list">
           <div class="sech l-mes"><b>Seu mês</b><span class="sech-n" id="lStripL"></span></div>
           <button type="button" class="strip l-strip" id="lStrip" data-seeall aria-label="Ver o histórico do mês"></button>
+          <div id="lProx"></div>
           <div class="sech"><b>Últimos lançamentos</b><button type="button" class="sech-a" data-seeall>Ver tudo</button></div>
           <div id="list"></div>
         </div>
@@ -3423,10 +3426,20 @@ function rowHTML(e){
       '<div class="amt '+(e.t==='in'?'in':'out')+'">'+(e.t==='in'?'+':'−')+money(e.v)+(e.st==='pend'?'<small>Pendente</small>':'')+'</div>'+
       '<span class="chev">'+ic('chevRs',14,2.4)+'</span></button></div></div>';
 }
-/* últimos lançamentos: os mais recentes, separados por dia; o histórico completo fica no Resumo */
+/* Entrou e Saiu contam só o que já foi pago ou recebido; o pendente aparece à parte, como "a pagar" e "a receber" */
+function feitos(list){ return list.filter(function(e){ return e.st !== 'pend'; }); }
+function stripHTML(list){
+  const ok = feitos(list), inc = sum(ok,'in'), out = sum(ok,'out'), sd = inc - out;
+  const pend = list.filter(function(e){ return e.st === 'pend'; }), aRec = sum(pend,'in'), aPag = sum(pend,'out');
+  return '<div><span>Entrou</span><b class="pos">'+fit(inc)+'</b>'+(aRec ? '<small>+'+fit(aRec)+' a receber</small>' : '')+'</div>'+
+    '<div><span>Saiu</span><b class="neg">'+fit(out)+'</b>'+(aPag ? '<small>+'+fit(aPag)+' a pagar</small>' : '')+'</div>'+
+    '<div><span>Saldo</span><b class="'+(sd > 0 ? 'pos' : (sd < 0 ? 'neg' : ''))+'">'+fit(sd)+'</b></div>';
+}
+/* últimos lançamentos: só até hoje (o que está marcado para depois aparece em Próximos) */
 function recentList(){
   const ym = ymNow(), prev = ymAdd(ym, -1);
-  const todos = live(mList(ym).concat(mList(prev))).sort(function(a,b){ return a.d === b.d ? (a.ts < b.ts ? 1 : -1) : (a.d < b.d ? 1 : -1); });
+  const hoje = todayISO();
+  const todos = live(mList(ym).concat(mList(prev))).filter(function(e){ return e.d <= hoje; }).sort(function(a,b){ return a.d === b.d ? (a.ts < b.ts ? 1 : -1) : (a.d < b.d ? 1 : -1); });
   // mostra os últimos 20, mas nunca corta um dia pela metade
   let n = Math.min(20, todos.length);
   while(n > 0 && n < todos.length && todos[n].d === todos[n-1].d) n++;
@@ -3439,12 +3452,20 @@ function dayGroups(list){
   list.forEach(function(e){ if(e.d !== day){ flush(); day = e.d; items = []; } items.push(e); });
   flush(); return '<div class="group dlist">'+h+'</div>';
 }
+/* próximos: o que está marcado para depois de hoje (contas fixas, parcelas, agendados) */
+function proximosList(){
+  const hoje = todayISO(), ym = ymNow();
+  return live(mList(ym).concat(mList(ymAdd(ym, 1)))).filter(function(e){ return e.d > hoje; })
+    .sort(function(a,b){ return a.d === b.d ? (a.ts < b.ts ? -1 : 1) : (a.d < b.d ? -1 : 1); });
+}
 function renderHistory(){
-  const list = recentList();
-  const mes = live(mList(ymNow())), inc = sum(mes,'in'), out = sum(mes,'out'), sd = inc - out;
+  const list = recentList(), prox = proximosList();
+  const mes = live(mList(ymNow()));
   const st = $('#lStrip');
-  if(st) st.innerHTML = '<div><span>Entrou</span><b class="pos">'+fit(inc)+'</b></div><div><span>Saiu</span><b class="neg">'+fit(out)+'</b></div><div><span>Saldo</span><b class="'+(sd > 0 ? 'pos' : (sd < 0 ? 'neg' : ''))+'">'+fit(sd)+'</b></div>';
+  if(st) st.innerHTML = stripHTML(mes);
   const lb = $('#lStripL'); if(lb) lb.textContent = cap(MES[+ymNow().slice(5,7)-1]);
+  const px = $('#lProx');
+  if(px) px.innerHTML = prox.length ? '<div class="sech"><b>Próximos</b><span class="sech-n">'+(prox.length > 3 ? '3 de '+prox.length : (prox.length === 1 ? '1 agendado' : prox.length+' agendados'))+'</span></div>'+dayGroups(prox.slice(0, 3)) : '';
   $('#list').innerHTML = list.length ? dayGroups(list) : '<div class="group"><div class="empty">'+sq('#8E8E93','list','lg',22)+'<b>Nada lançado ainda</b>O que você lançar aqui em cima aparece nesta lista, separado por dia.</div></div>';
   V.flash = null; V.fresh = null; V.stagger = 0;
 }
@@ -3485,7 +3506,7 @@ container.addEventListener('click', function(ev){
   const a = ev.target.closest('[data-sw]'); if(a){ swAction(a.closest('.sw'), a.getAttribute('data-sw')); }
 }, true);
 }
-bindSwipe($('#list'));
+bindSwipe($('#list')); bindSwipe($('#lProx'));
 function swAction(sw, kind){
   const f = find(sw.getAttribute('data-sid')); if(!f) return;
   if(kind === 'pay' && f.e.fv){ swClose(sw); perguntarValorFixa(f); return; }
@@ -3648,8 +3669,7 @@ function renderHistorico(){
     '<button type="button" class="cap cap-dd'+(V.h.cat ? ' on' : '')+'" data-hcat aria-pressed="'+(!!V.h.cat)+'">'+(V.h.cat ? esc(V.h.cat) : 'Categoria')+DD+'</button>'+
     '<button type="button" class="cap cap-dd'+(V.h.met ? ' on' : '')+'" data-hmet aria-pressed="'+(!!V.h.met)+'">'+(V.h.met ? esc(V.h.met) : 'Forma')+DD+'</button>'+
     (filtrando ? '<button type="button" class="cap cap-clear" data-hclear>Limpar</button>' : '');
-  const inc = sum(list,'in'), out = sum(list,'out'), sd = inc - out;
-  $('#hStrip').innerHTML = '<div><span>Entrou</span><b class="pos">'+fit(inc)+'</b></div><div><span>Saiu</span><b class="neg">'+fit(out)+'</b></div><div><span>Saldo</span><b class="'+(sd > 0 ? 'pos' : (sd < 0 ? 'neg' : ''))+'">'+fit(sd)+'</b></div>';
+  $('#hStrip').innerHTML = stripHTML(list);
   const pend = list.filter(function(e){ return e.st === 'pend'; }).length;
   $('#hCount').textContent = list.length ? list.length+(list.length === 1 ? ' lançamento' : ' lançamentos')+(pend ? ', '+pend+(pend === 1 ? ' pendente' : ' pendentes') : '') : '';
   if(!list.length){
@@ -3792,7 +3812,8 @@ function renderResumo(){
   const P = period(), hoje = todayISO(), sem = V.rMode === 'semana';
   $('#rLab').textContent = P.label;
   const act = between(P.a, P.b), prev = between(P.pa, P.pb);
-  const inc = sum(act,'in'), out = sum(act,'out'), prevista = inc - out;
+  const inc = sum(act,'in'), out = sum(act,'out'), prevista = inc - out;      // previsão: conta também o pendente
+  const ok = feitos(act), incR = sum(ok,'in'), outR = sum(ok,'out');          // o que já entrou e saiu de fato
   const passado = P.b < hoje, futuro = P.a > hoje;
   const real = act.filter(function(e){ return e.d <= hoje && e.st !== 'pend'; }), sobrou = sum(real,'in') - sum(real,'out');
   const pendAll = live(all()).filter(function(e){ return e.st === 'pend'; });
@@ -3872,22 +3893,22 @@ function renderResumo(){
 
   const dias = []; for(let i=0;i<P.n;i++) dias.push(shiftDay(P.a, i));
   const passados = dias.filter(function(x){ return x <= hoje; }).length || P.n;
-  const ins = act.filter(function(e){ return e.t === 'in'; }), byIn = {}; ins.forEach(function(e){ byIn[e.cat] = (byIn[e.cat]||0) + e.v; });
+  const ins = ok.filter(function(e){ return e.t === 'in'; }), byIn = {}; ins.forEach(function(e){ byIn[e.cat] = (byIn[e.cat]||0) + e.v; });
   const topIn = Object.keys(byIn).sort(function(a,b){ return byIn[b] - byIn[a]; })[0];
   $('#rDuo').innerHTML =
-    '<button type="button" class="tile" data-tile="in"><small><i class="dot pos"></i>Entrou</small><b class="pos" id="rIn">'+fit(inc)+'</b><em>'+(topIn ? (Object.keys(byIn).length > 1 ? 'Mais de '+esc(topIn) : esc(topIn)) : ins.length+' entradas')+'</em></button>'+
-    '<button type="button" class="tile" data-tile="out"><small><i class="dot neg"></i>Saiu</small><b class="neg" id="rOut">'+fit(out)+'</b><em>'+fit(Math.round(out / passados))+' por dia</em></button>';
-  countUp($('#rIn'), inc, fit); countUp($('#rOut'), out, fit);
+    '<button type="button" class="tile" data-tile="in"><small><i class="dot pos"></i>Entrou</small><b class="pos" id="rIn">'+fit(incR)+'</b><em>'+(inc > incR ? '+'+fit(inc - incR)+' a receber' : (topIn ? (Object.keys(byIn).length > 1 ? 'Mais de '+esc(topIn) : esc(topIn)) : ins.length+' entradas'))+'</em></button>'+
+    '<button type="button" class="tile" data-tile="out"><small><i class="dot neg"></i>Saiu</small><b class="neg" id="rOut">'+fit(outR)+'</b><em>'+(out > outR ? '+'+fit(out - outR)+' a pagar' : fit(Math.round(outR / passados))+' por dia')+'</em></button>';
+  countUp($('#rIn'), incR, fit); countUp($('#rOut'), outR, fit);
 
   // para onde foi o dinheiro, com o que mudou em relação ao período anterior
-  const outs = act.filter(function(e){ return e.t === 'out'; });
+  const outs = ok.filter(function(e){ return e.t === 'out'; });
   const by = {}; outs.forEach(function(e){ by[e.cat] = (by[e.cat]||0) + e.v; });
-  const pby = {}; prev.forEach(function(e){ if(e.t === 'out') pby[e.cat] = (pby[e.cat]||0) + e.v; });
+  const pby = {}; feitos(prev).forEach(function(e){ if(e.t === 'out') pby[e.cat] = (pby[e.cat]||0) + e.v; });
   const cats = Object.keys(by).map(function(c){ return [c, by[c]]; }).sort(function(a,b){ return b[1]-a[1]; });
   const antes = sem ? 'na semana passada' : 'em '+MES[+P.pa.slice(5,7)-1];
   $('#rSpend').innerHTML = !cats.length ? '<div class="group"><div class="empty">'+sq('#8E8E93','cart','lg',22)+'<b>Sem gastos no período</b>Cada categoria aparece aqui, da que mais pesou para a que menos pesou.</div></div>' :
     '<div class="card where">'+cats.slice(0, jeito().modo === 'essencial' ? 4 : 6).map(function(c){
-      const p = c[1]/out*100, pv = pby[c[0]]||0, df = c[1] - pv;
+      const p = c[1]/outR*100, pv = pby[c[0]]||0, df = c[1] - pv;
       let sub = Math.round(p)+'% dos gastos';
       if(pv > 0 && Math.abs(df) >= Math.max(3000, pv*.15)) sub += ' · <span class="'+(df > 0 ? 'neg' : 'pos')+'">'+money0(Math.abs(df))+(df > 0 ? ' a mais' : ' a menos')+' que '+antes+'</span>';
       return barRow('data-rcat="'+esc(c[0])+'" data-rt="out"', c[0], c[1], p, 'neg', sub); }).join('')+'</div>';
@@ -3897,7 +3918,7 @@ function renderResumo(){
   $('#rMetas').innerHTML = nums + (!metas.length ? '' : '<div class="sech"><b>Suas metas</b><button type="button" class="sech-a" data-gometas>Ver</button></div><div class="card where">'+
     metas.slice(0,3).map(function(m){ const pc = m.alvo ? Math.min(100, Math.round(m.guardado/m.alvo*100)) : 0;
       return '<button type="button" class="wrow" data-gometas><div class="wt"><span>'+esc(m.nome)+'</span><b>'+pc+'%</b></div><div class="wb pos"><i style="width:'+Math.max(pc,1)+'%"></i></div><small>'+money0(m.guardado)+' de '+money0(m.alvo)+'</small></button>'; }).join('')+'</div>');
-  renderResumoMais(P, act, outs, inc, out, sem, hoje, dias, passados);
+  renderResumoMais(P, act, outs, incR, outR, sem, hoje, dias, passados);
   animateIn($('#p-resumo'));
 }
 /* ===== seções extras do modo Completo ===== */
@@ -3912,9 +3933,10 @@ function renderResumoMais(P, act, outs, inc, out, sem, hoje, dias, passados){
   if($('#rAtt .att')) jump.push(['rAtt','Atenção']);
   if(outs.length) jump.push(['rSpendH','Categorias']);
   // fixo e dia a dia
-  if(out > 0){
-    const fx = outs.filter(function(e){ return e.fx; }), fv = sum(fx,'out'), dv = out - fv, pagas = fx.filter(function(e){ return e.st !== 'pend'; }).length;
-    const pf = Math.round(fv/out*100);
+  const outsAll = act.filter(function(e){ return e.t === 'out'; }), outAll = sum(outsAll,'out');   // inclui o que falta pagar
+  if(outAll > 0){
+    const fx = outsAll.filter(function(e){ return e.fx; }), fv = sum(fx,'out'), dv = outAll - fv, pagas = fx.filter(function(e){ return e.st !== 'pend'; }).length;
+    const pf = Math.round(fv/outAll*100);
     $('#rFixo').innerHTML = '<div class="sech"><b>Fixo e dia a dia</b></div><div class="card blk">'+
       stackBar([{ v:fv, c:'var(--info)' }, { v:dv, c:'color-mix(in srgb,var(--label) 38%,transparent)' }])+
       lgRow('var(--info)', 'Contas fixas', fv, pf)+lgRow('color-mix(in srgb,var(--label) 38%,transparent)', 'Dia a dia', dv, 100 - pf)+
@@ -3957,7 +3979,7 @@ function renderResumoMais(P, act, outs, inc, out, sem, hoje, dias, passados){
   // mês a mês
   if(!sem){
     const n = jeito().detalhado ? 12 : 6, meses = [];
-    for(let i=n-1;i>=0;i--){ const ym = ymAdd(P.ym, -i), l = live(mList(ym)); meses.push({ ym:ym, i:sum(l,'in'), o:sum(l,'out') }); }
+    for(let i=n-1;i>=0;i--){ const ym = ymAdd(P.ym, -i), l = feitos(live(mList(ym))); meses.push({ ym:ym, i:sum(l,'in'), o:sum(l,'out') }); }
     const comDados = meses.filter(function(m){ return m.i || m.o; });
     if(comDados.length > 1){
       const mx = Math.max.apply(null, meses.map(function(m){ return Math.max(m.i, m.o); })) || 1;
@@ -4950,7 +4972,7 @@ function fechamentoPendente(){
 }
 function fechDados(ym){
   const ant = ymAdd(ym, -1);
-  const mes = live(mList(ym)), mesAnt = live(mList(ant));
+  const todos = live(mList(ym)), mes = feitos(todos), mesAnt = feitos(live(mList(ant)));
   const inc = sum(mes, 'in'), out = sum(mes, 'out'), sobra = inc - out;
   const sobraAnt = sum(mesAnt, 'in') - sum(mesAnt, 'out');
   // para onde foi
@@ -4966,7 +4988,7 @@ function fechDados(ym){
   const estourou = limites.filter(function(l){ return l.gasto > l.lim; });
   const dentro = limites.filter(function(l){ return l.gasto <= l.lim; });
   // contas que ficaram para trás
-  const pendentes = mes.filter(function(e){ return e.st === 'pend' && e.t === 'out'; });
+  const pendentes = todos.filter(function(e){ return e.st === 'pend' && e.t === 'out'; });
   // metas
   const guardado = (S.config.metas || []).reduce(function(s, m){
     return s + (m.hist || []).filter(function(h){ return (h.d || '').slice(0, 7) === ym; }).reduce(function(a, h){ return a + h.v; }, 0);
@@ -5074,10 +5096,10 @@ function renderLimites(){
   act.forEach(function(e){ if(e.t === 'out') by[e.cat] = (by[e.cat]||0) + e.v; });
   const bud = S.config.budgets, cats = S.config.cats.out.slice();
   Object.keys(by).forEach(function(c){ if(cats.indexOf(c) === -1) cats.push(c); });
-  const tot = cats.reduce(function(s,c){ return s + (bud[c]||0); }, 0), gasto = sum(act,'out'), inc = sum(act,'in');
+  const tot = cats.reduce(function(s,c){ return s + (bud[c]||0); }, 0), gasto = sum(act,'out'), inc = sum(act,'in'), pago = sum(feitos(act),'out');
   const sobra = inc - Math.max(tot, gasto);
   let h = '<div class="card sum"><small>Sobra prevista em '+MES[+V.ym.slice(5,7)-1]+'</small><div class="hnum '+(sobra > 0 ? 'pos' : (sobra < 0 ? 'neg' : ''))+'">'+fit(sobra)+'</div>'+
-    '<div class="sumr"><span>Limites <b>'+fit(tot)+'</b></span><span>Gasto <b class="neg">'+fit(gasto)+'</b></span></div></div>';
+    '<div class="sumr"><span>Limites <b>'+fit(tot)+'</b></span><span>Gasto <b class="neg">'+fit(pago)+'</b></span>'+(gasto > pago ? '<span>A pagar <b class="warn">'+fit(gasto - pago)+'</b></span>' : '')+'</div></div>';
   const comLim = cats.filter(function(c){ return bud[c]; }), semLim = cats.filter(function(c){ return !bud[c]; });
   h += '<div class="sech"><b>Seus limites</b><button type="button" class="sech-a" data-limnew>+ Novo</button></div>';
   if(!comLim.length) h += '<div class="group"><div class="empty">'+sq('#8E8E93','target','lg',22)+'<b>Nenhum limite ainda</b>Toque em "+ Novo" ou em "Definir" numa categoria para combinar quanto gastar por mês.</div></div>';
