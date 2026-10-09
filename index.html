@@ -2437,7 +2437,7 @@ function mergeConfig(raw){
   if(!Array.isArray(c.biz.fixos)) c.biz.fixos = [];
   return c;
 }
-const S = { config: blankConfig(), months: {}, stamps: {} };
+const S = { config: blankConfig(), months: {}, stamps: {}, rm: {} };
 const V = { tab:'lancar', ym:ymNow(), area:'tudo', plan:'orc', fType:'tudo', flash:null, fresh:null, rMode:(function(){ try{ return localStorage.getItem('caixa-clique-v1:resumo') || 'mes'; }catch(e){ return 'mes'; } })(), rDate:todayISO() };
 function mList(ym){ return S.months[ym] || []; }
 function ensureM(ym){ if(!S.months[ym]) S.months[ym] = []; return S.months[ym]; }
@@ -2454,23 +2454,92 @@ function find(id){
 /* ================= armazenamento ================= */
 const LS = 'caixa-clique-v1';
 let DB = null, mode = 'local', saveErr = false;
-const seen = {}, chain = {}, timers = {};
+const seen = {}, chain = {}, timers = {}, pendente = {};
 function setStatus(kind, txt){ const f = $('#sideFoot'); f.className = 'side-foot' + (kind ? ' '+kind : ''); f.lastElementChild.textContent = txt; }
-function idleStatus(){ if(V.esperandoNuvem) return setStatus('saving','Conectando à sua conta'); if(saveErr) return setStatus('err','Erro ao salvar'); if(STANDALONE && !navigator.onLine) return setStatus('saving','Sem internet, salva quando voltar'); setStatus('', mode === 'cloud' ? 'Salvo na nuvem' : 'Salvo neste aparelho'); }
+function idleStatus(){ if(V.esperandoNuvem) return setStatus('saving','Conectando à sua conta'); if(saveErr) return setStatus('err','Erro ao salvar'); if(STANDALONE && !navigator.onLine) return setStatus('saving','Sem internet, salva quando voltar'); if(mode === 'cloud' && Object.keys(pendente).length) return setStatus('saving','Salvo aqui, enviando para a nuvem'); setStatus('', mode === 'cloud' ? 'Salvo na nuvem' : 'Salvo neste aparelho'); }
 window.addEventListener('online', function(){ idleStatus(); });
 window.addEventListener('offline', function(){ idleStatus(); });
-function saveLocal(){ try{ localStorage.setItem(LS, JSON.stringify({ config:S.config, months:S.months, stamps:S.stamps })); return true; }catch(e){ return false; } }
+function saveLocal(){ try{ localStorage.setItem(LS, JSON.stringify({ config:S.config, months:S.months, stamps:S.stamps, rm:S.rm })); return true; }catch(e){ return false; } }
 function thaw(){ S.months = clone(S.months) || {}; S.config = mergeConfig(clone(S.config)); }
 function loadLocal(){
   try{ const raw = localStorage.getItem(LS); if(!raw) return false; const d = JSON.parse(raw);
-    if(d.config) S.config = mergeConfig(d.config); if(d.months) S.months = d.months; if(d.stamps) S.stamps = d.stamps; return true; }catch(e){ return false; }
+    if(d.config) S.config = mergeConfig(d.config); if(d.months) S.months = d.months; if(d.stamps) S.stamps = d.stamps; S.rm = d.rm || {}; selarTudo(); return true; }catch(e){ return false; }
 }
-const inflight = {};
+const inflight = {}, uniao = {};
+/* ---- o mesmo mês mexido em dois aparelhos: junta lançamento por lançamento ----
+   cada lançamento guarda quando mudou pela última vez (up) e uma impressão do conteúdo (_h);
+   o que sai de um mês vira um aviso de remoção (rm) para o outro aparelho não trazer de volta */
+function estavel(o){
+  if(o === null || typeof o !== 'object') return JSON.stringify(o);
+  if(Array.isArray(o)) return '['+o.map(estavel).join(',')+']';
+  return '{'+Object.keys(o).sort().filter(function(k){ return k !== 'up' && k !== '_h' && o[k] !== undefined; }).map(function(k){ return JSON.stringify(k)+':'+estavel(o[k]); }).join(',')+'}';
+}
+function hashItem(e){ const t = estavel(e); let h = 5381; for(let i=0;i<t.length;i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; return h.toString(36); }
+function quando(e){ return e.up || e.ts || ''; }
+const baseIds = {};
+function selar(ym){ const ids = {}; mList(ym).forEach(function(e){ if(!e._h) e._h = hashItem(e); ids[e.id] = 1; }); baseIds[ym] = ids; }
+function selarTudo(){ Object.keys(S.months).forEach(selar); }
+function podar(rm){ const lim = new Date(Date.now() - 120*864e5).toISOString(); Object.keys(rm).forEach(function(id){ if(rm[id] < lim) delete rm[id]; }); return rm; }
+function marcarMudancas(ym, agora){
+  const base = baseIds[ym] || {}, rm = S.rm[ym] || {}, ids = {};
+  mList(ym).forEach(function(e){ const h = hashItem(e); ids[e.id] = 1;
+    if(e._h !== h || rm[e.id]){ e._h = h; e.up = agora; delete rm[e.id]; } });
+  Object.keys(base).forEach(function(id){ if(!ids[id]) rm[id] = agora; });
+  baseIds[ym] = ids; podar(rm);
+  if(Object.keys(rm).length) S.rm[ym] = rm; else delete S.rm[ym];
+}
+/* rem = versão da nuvem; desde = última versão da nuvem que este aparelho conhecia (só importa se a nuvem foi gravada por uma versão antiga do app, sem rm) */
+function mesclarMes(loc, locRm, rem, desde){
+  rem = rem || {};
+  const rItems = rem.items || [], legado = !rem.rm && rItems.length > 0, rm = Object.assign({}, rem.rm || {});
+  Object.keys(locRm || {}).forEach(function(id){ if(!rm[id] || locRm[id] > rm[id]) rm[id] = locRm[id]; });
+  const por = {}, ordem = [];
+  rItems.forEach(function(e){ if(!por[e.id]) ordem.push(e.id); por[e.id] = e; });
+  (loc || []).forEach(function(e){ const r = por[e.id];
+    if(!r){ if(legado && !(quando(e) > (desde || ''))) return; por[e.id] = e; ordem.push(e.id); }
+    else if(quando(e) > quando(r)) por[e.id] = e; });
+  return { items: ordem.map(function(id){ return por[id]; }).filter(function(e){ return !(rm[e.id] && rm[e.id] >= quando(e)); }), rm: podar(rm) };
+}
+function assinatura(items, rm){ return items.map(function(e){ return e.id+':'+(e._h || hashItem(e))+':'+quando(e); }).sort().join('|') + '#' + Object.keys(rm || {}).sort().join(','); }
+function corpoMes(ym){ return { items: mList(ym), rm: S.rm[ym] || {}, updatedAt: S.stamps['months/'+ym] }; }
+/* junta o que veio da nuvem com o que está aqui; devolve true se mudou algo na tela */
+function aplicarMes(ym, rem, desde){
+  const antes = assinatura(mList(ym), S.rm[ym]);
+  const m = mesclarMes(mList(ym), S.rm[ym], clone(rem), desde);
+  S.months[ym] = m.items; if(Object.keys(m.rm).length) S.rm[ym] = m.rm; else delete S.rm[ym];
+  selar(ym);
+  return assinatura(mList(ym), S.rm[ym]) !== antes;
+}
+let pendT = null, pendN = 0;
+function tentarPendentes(){ clearTimeout(pendT); pendT = null; Object.keys(pendente).forEach(function(p){ if(!busy(p)) push(p, null); }); }
+function agendarPendentes(){ if(pendT) return; pendT = setTimeout(tentarPendentes, Math.min(120000, 5000 * Math.pow(2, pendN++))); }
+window.addEventListener('online', function(){ pendN = 0; if(DB) tentarPendentes(); });
+function pushMes(path){
+  const ym = path.slice(7), ref = DB.doc(path);
+  return ref.tx(function(rem){
+    const m = mesclarMes(mList(ym), S.rm[ym], rem, uniao[path] ? '' : seen[path]);
+    return JSON.parse(JSON.stringify({ items: m.items, rm: m.rm, updatedAt: nowISO() }));
+  }).then(function(body){
+    inflight[path]--; delete pendente[path]; delete uniao[path]; pendN = 0; saveErr = false;
+    seen[path] = body.updatedAt;
+    const mudou = aplicarMes(ym, body, body.updatedAt);
+    if(!timers[path]) S.stamps[path] = body.updatedAt;
+    saveLocal(); idleStatus();
+    if(mudou && !$('#sheetWrap').classList.contains('on') && !$('#popWrap').classList.contains('on')) render();
+  }, function(err){
+    inflight[path]--; pendente[path] = 1; agendarPendentes();
+    const semRede = !navigator.onLine || /unavailable|offline|network/i.test(String((err && (err.code || err.message)) || ''));
+    if(!semRede){ saveErr = true; island('A nuvem não confirmou. Seus dados seguem neste aparelho.', null, true); }
+    idleStatus();
+  });
+}
 function push(path, body){
   if(!DB) return Promise.resolve();
-  body = JSON.parse(JSON.stringify(body));
+  const mes = path.indexOf('months/') === 0 && typeof DB.doc(path).tx === 'function';
+  if(!mes) body = JSON.parse(JSON.stringify(body || corpoMes(path.slice(7))));
   inflight[path] = (inflight[path] || 0) + 1;
   chain[path] = (chain[path] || Promise.resolve()).then(function(){
+    if(mes) return pushMes(path);
     return DB.doc(path).set(body).then(function(){ seen[path] = body.updatedAt; inflight[path]--; saveErr = false; idleStatus(); }, function(err){ inflight[path]--; throw err; })
       .catch(function(err){ saveErr = true; idleStatus(); island('A nuvem não confirmou. Seus dados seguem neste aparelho.', null, true); });
   });
@@ -2479,7 +2548,7 @@ function push(path, body){
 function schedule(path, getBody){ if(!DB) return; setStatus('saving','Salvando'); clearTimeout(timers[path]); timers[path] = setTimeout(function(){ timers[path] = null; push(path, getBody()); }, 450); }
 function busy(path){ return !!timers[path] || (inflight[path] || 0) > 0; }
 function saveConfig(){ const st = nowISO(); S.config.updatedAt = st; S.stamps['config/main'] = st; saveLocal(); schedule('config/main', function(){ return S.config; }); }
-function saveMonth(ym){ const p = 'months/'+ym; S.stamps[p] = nowISO(); saveLocal(); schedule(p, function(){ return { items: mList(ym), updatedAt: S.stamps[p] }; }); }
+function saveMonth(ym){ const p = 'months/'+ym, agora = nowISO(); marcarMudancas(ym, agora); S.stamps[p] = agora; saveLocal(); schedule(p, function(){ return corpoMes(ym); }); }
 const STANDALONE = !!window.FIREBASE_CONFIG;
 const UNSUBS = [];
 function useCap(name){
@@ -5903,8 +5972,13 @@ async function syncCloud(){
       S.months[d.id] = rem.concat(daqui);
       if(daqui.length){ S.stamps[p] = nowISO(); pushes.push(p); } else S.stamps[p] = b.updatedAt || '';
     }
-    else if(localHas && loc && b.updatedAt && loc > b.updatedAt){ pushes.push(p); }
-    else { S.months[d.id] = b.items || []; S.stamps[p] = b.updatedAt || ''; }
+    else if(b.rm){                                              // nuvem já no formato novo: junta lançamento por lançamento
+      aplicarMes(d.id, b, b.updatedAt);
+      if(assinatura(mList(d.id), S.rm[d.id]) !== assinatura(b.items || [], b.rm)){ if(!S.stamps[p] || S.stamps[p] <= (b.updatedAt || '')) S.stamps[p] = nowISO(); pushes.push(p); }
+      else S.stamps[p] = b.updatedAt || '';
+    }
+    else if(localHas && loc && b.updatedAt && loc > b.updatedAt){ uniao[p] = 1; pushes.push(p); }   // nuvem gravada pela versão antiga e daqui mais novo: nada daqui se perde
+    else { S.months[d.id] = b.items || []; S.stamps[p] = b.updatedAt || ''; selar(d.id); }
     seen[p] = b.updatedAt;
   });
   Object.keys(S.months).forEach(function(k){ if(!remoteIds[k] && mList(k).length){ if(!S.stamps['months/'+k]) S.stamps['months/'+k] = nowISO(); pushes.push('months/'+k); } });
@@ -5915,11 +5989,11 @@ async function syncCloud(){
     else { S.config = mergeConfig(rc); S.stamps['config/main'] = rc.updatedAt || ''; }
     seen['config/main'] = rc.updatedAt;
   } else if(localHas) pushes.push('config/main');
-  mode = 'cloud'; marcarConfiavel(); saveLocal(); idleStatus(); render();
+  selarTudo(); mode = 'cloud'; marcarConfiavel(); saveLocal(); idleStatus(); render();
   for(let i=0;i<pushes.length;i++){
     const p = pushes[i];
     if(p === 'config/main') await push(p, S.config);
-    else { const ym = p.slice(7); await push(p, { items: mList(ym), updatedAt: S.stamps[p] }); }
+    else await push(p, corpoMes(p.slice(7)));
   }
   /* mudanças vindas de outro aparelho: só entram se forem mais novas e se não houver gravação local pendente */
   UNSUBS.push(db.doc('config/main').onSnapshot(function(s){
@@ -5933,8 +6007,16 @@ async function syncCloud(){
     if(s.metadata.hasPendingWrites) return; let ch = false;
     (s.docs||[]).forEach(function(d){
       const b = clone(d.data()) || {}, p = 'months/'+d.id;
-      if(!b.updatedAt || busy(p) || b.updatedAt <= (S.stamps[p] || '')) return;
-      S.stamps[p] = b.updatedAt; seen[p] = b.updatedAt; S.months[d.id] = b.items || []; ch = true;
+      if(!b.updatedAt || b.updatedAt === seen[p]) return;
+      if(b.rm){                                                  // junta com o que há aqui; se aqui tinha algo a mais, manda de volta
+        const desde = seen[p]; seen[p] = b.updatedAt;
+        if(aplicarMes(d.id, b, desde)) ch = true;
+        if(assinatura(mList(d.id), S.rm[d.id]) !== assinatura(b.items || [], b.rm)){ if(!busy(p)) saveMonth(d.id); }
+        else if(!busy(p)) S.stamps[p] = b.updatedAt;
+        return;
+      }
+      if(busy(p) || b.updatedAt <= (S.stamps[p] || '')) return;
+      S.stamps[p] = b.updatedAt; seen[p] = b.updatedAt; S.months[d.id] = b.items || []; selar(d.id); ch = true;
     });
     if(ch){ saveLocal(); if(!$('#sheetWrap').classList.contains('on') && !$('#popWrap').classList.contains('on')) render(); }
   }, function(){}));
@@ -5942,7 +6024,7 @@ async function syncCloud(){
 
 /* ================= início ================= */
 /* ================= conta (app instalado) ================= */
-function clearLocalData(){ S.config = blankConfig(); S.months = {}; S.stamps = {}; saveLocal(); try{ localStorage.removeItem(BASE_KEY); localStorage.removeItem(LS+':perfil'); localStorage.removeItem(LS+':sobre'); localStorage.removeItem(LS+':dicas'); }catch(e){} applyJeito(); renderMe(); }
+function clearLocalData(){ S.config = blankConfig(); S.months = {}; S.stamps = {}; S.rm = {}; Object.keys(baseIds).forEach(function(k){ delete baseIds[k]; }); Object.keys(pendente).forEach(function(k){ delete pendente[k]; }); saveLocal(); try{ localStorage.removeItem(BASE_KEY); localStorage.removeItem(LS+':perfil'); localStorage.removeItem(LS+':sobre'); localStorage.removeItem(LS+':dicas'); }catch(e){} applyJeito(); renderMe(); }
 function cloudReset(){
   UNSUBS.splice(0).forEach(function(u){ try{ if(typeof u === 'function') u(); }catch(e){} });
   Object.keys(timers).forEach(function(k){ clearTimeout(timers[k]); timers[k] = null; });
@@ -6512,6 +6594,7 @@ if(!window.__FB_TEST){
         return {
           get: async () => { try{ return embrulha(await F.getDoc(r)); }catch(e){ try{ return embrulha(await F.getDocFromCache(r)); }catch(e2){ return vazio(r.id); } } },
           set: body => F.setDoc(r, body),
+          tx: fn => F.runTransaction(db, async t => { const s = await t.get(r); const novo = fn(s.exists() ? s.data() : null); t.set(r, novo); return novo; }),
           delete: () => F.deleteDoc(r),
           onSnapshot: (cb, err) => F.onSnapshot(r, s => cb(embrulha(s)), err)
         };
