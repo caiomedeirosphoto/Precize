@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Precize</title>
+<meta name="precize-versao" content="2026.10-beta">
 <meta name="description" content="Precize, finanças mais simples. Lance entradas e saídas, veja para onde foi o dinheiro e planeje o mês.">
 <script>try{var tm=(JSON.parse(localStorage.getItem('caixa-clique-v1:sobre')||'{}')||{}).tema;if(tm==='claro'||tm==='escuro')document.documentElement.setAttribute('data-theme',tm==='claro'?'light':'dark');}catch(e){}</script>
 <meta name="theme-color" content="#0A0C0B" media="(prefers-color-scheme: dark)">
@@ -1493,7 +1494,7 @@ body.cr-open{overflow:hidden}
 .btn.cta svg{margin-right:6px}
 .sugs .sug{background:var(--ib);box-shadow:inset 0 0 0 .5px var(--gline)}
 /* Resumo */
-.filters{display:flex;gap:8px;align-items:center;margin:0 0 14px;overflow-x:auto;scrollbar-width:none}
+.filters{display:flex;gap:8px;align-items:center;margin:0 0 14px;flex-wrap:wrap}
 .filters::-webkit-scrollbar{display:none}
 .mpill{background:var(--ib) !important;box-shadow:inset 0 0 0 .5px var(--gline) !important;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);flex:none}
 .mpill .lb{font-weight:700}
@@ -1867,6 +1868,15 @@ html,body{background-color:var(--bg) !important}
 .ob-in:focus{box-shadow:inset 0 0 0 2px var(--tint),var(--gshadow)}
 .ob-err{min-height:20px;font-size:13.5px;color:var(--neg);margin:8px 0 4px}
 .ob-av{display:flex;justify-content:center;margin:6px 0 26px}
+.av-acts{display:flex;align-items:center;gap:14px;margin-top:10px}
+.av-depois{border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:var(--label-2);cursor:pointer;padding:4px 0}
+.inst{display:flex;flex-direction:column;gap:12px;margin:4px 0 6px}
+.inst-p{display:flex;gap:12px;align-items:flex-start;font-size:16px;line-height:1.4}
+.inst-p>b{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;color:#fff;background:var(--tint)}
+.inst-p span b{font-weight:700}
+.inst-p svg{display:inline-block;vertical-align:-3px;color:var(--tint)}
+.op-esc{display:flex;gap:8px;margin:0 0 14px}
+.op-esc .cap{flex:1;justify-content:center}
 /* lançar falando */
 .desc-row{display:flex;gap:8px;align-items:center}
 .desc-row .desc{flex:1;min-width:0}
@@ -2274,6 +2284,7 @@ body.private .fe-num,body.private .fe-io b,body.private .fe-linha b{filter:blur(
     <!-- LANÇAR -->
     <section class="panel on" id="p-lancar" aria-label="Lançar">
       <div class="dica-box" data-dica="lancar"></div>
+      <div id="avisoBox"></div>
       <div class="lanc">
         <div class="composer glass" id="composer"></div>
         <div class="lanc-list">
@@ -2529,6 +2540,8 @@ const G = {tema:'<circle cx="12" cy="12" r="8.2"/><path d="M12 3.8a8.2 8.2 0 0 0
   barcode:'<path d="M4.5 6v12M7.5 6v12M10 6v12M13.5 6v12M16 6v12M19.5 6v12"/>',
   transfer:'<path d="M4.5 8.5h14M15.5 5.5l3 3-3 3M19.5 15.5h-14M8.5 12.5l-3 3 3 3"/>',
   cal:'<path d="M4.5 6.2h15v13.3h-15z"/><path d="M4.5 10.2h15M8.6 4v3.6M15.4 4v3.6"/>',
+  paw:'<circle cx="7" cy="9.5" r="1.7"/><circle cx="10.4" cy="6.2" r="1.7"/><circle cx="13.6" cy="6.2" r="1.7"/><circle cx="17" cy="9.5" r="1.7"/><path d="M12 11.6c-2.6 0-5 2.7-5 5.1 0 1.6 1.3 2.4 2.7 2.4 1 0 1.5-.5 2.3-.5s1.3.5 2.3.5c1.4 0 2.7-.8 2.7-2.4 0-2.4-2.4-5.1-5-5.1z"/>',
+  plane:'<path d="M10.2 13.8 4 11.6l1.3-1.4 6.3 1 4.6-4.8a1.7 1.7 0 0 1 2.4 2.4l-4.8 4.6 1 6.3-1.4 1.3-2.2-6.2-2.6 2.5v2.2l-1.2 1.1-1.1-2.9-2.9-1.1 1.1-1.2h2.2z"/>',
   bag:'<path d="M5.6 8.4h12.8l-.9 11H6.5z"/><path d="M9 10.6V7.2a3 3 0 0 1 6 0v3.4"/>'
 };
 const CAT = {
@@ -2537,7 +2550,7 @@ const CAT = {
   'Roupas':['#00C7BE','shirt'],'Casa':['#A2845E','sofa'],'Equipamento':['#636366','camera'],'Manutenção':['#8E8E93','wrench'],
   'Software e edição':['#5E5CE6','sliders'],'Divulgação':['#FFB800','mega'],'Cursos':['#30B0C7','grad'],'Impostos':['#FF3B30','bank'],
   'Outros':['#8E8E93','dots'],'Salário':['#34C759','brief'],'Trabalho de fotografia':['#FF9500','aperture'],'Freela':['#30B0C7','laptop'],
-  'Venda':['#00C7BE','tag'],'Reembolso':['#007AFF','back'],'Presentes':['#FF2D55','gift'],'Compras':['#AF52DE','bag']
+  'Venda':['#00C7BE','tag'],'Beleza':['#FF2D55','spark'],'Pets':['#A2845E','paw'],'Viagem':['#32ADE6','plane'],'Reembolso':['#007AFF','back'],'Presentes':['#FF2D55','gift'],'Compras':['#AF52DE','bag']
 };
 const PALETTE = ['#007AFF','#34C759','#5856D6','#FF9500','#FF2D55','#AF52DE','#FF3B30','#30B0C7','#32ADE6','#00C7BE','#A2845E','#FFB800'];
 function catColor(c){ return (CAT[c] || [PALETTE[hash(String(c)) % PALETTE.length]])[0]; }
@@ -2556,7 +2569,7 @@ function shade(cor, i){ const op = [100,72,52,38,28,20,15][Math.min(i, 6)]; retu
 
 /* ================= estado ================= */
 const DEF = {
-  out: ['Moradia','Mercado','Alimentação','Transporte','Saúde','Lazer','Assinaturas','Educação','Roupas','Casa','Equipamento','Manutenção','Cursos','Impostos','Outros'],
+  out: ['Moradia','Mercado','Alimentação','Transporte','Saúde','Lazer','Assinaturas','Educação','Roupas','Casa','Beleza','Pets','Viagem','Presentes','Impostos','Outros'],
   in:  ['Salário','Freela','Venda','Reembolso','Rendimentos','Outros'],
   foto:['Equipamento','Manutenção','Software e edição','Divulgação','Cursos','Impostos','Trabalho de fotografia'],
   mets:['Pix','Débito','Crédito','Dinheiro','Boleto','Transferência']
@@ -3761,7 +3774,7 @@ document.addEventListener('click', function(ev){
   if(p){ const f = find(p.getAttribute('data-pay')); if(f){ f.e.st = 'pago'; saveMonth(f.ym); render(); island(f.e.t === 'in' ? 'Marcado como recebido' : 'Marcado como pago'); } return; }
   if(swOpen && !ev.target.closest('.sw')) swClose(swOpen);
 });
-function renderLancar(){ if(!$('#cVal')) renderComposer(); else { if(CS.cat && S.config.cats[CS.t].indexOf(CS.cat) === -1) CS.cat = ''; setCatChip(); } if(V.deferHist) afterPaint(function(){ if(V.tab === 'lancar') renderHistory(); }); else renderHistory(); }
+function renderLancar(){ renderAviso(); if(!$('#cVal')) renderComposer(); else { if(CS.cat && S.config.cats[CS.t].indexOf(CS.cat) === -1) CS.cat = ''; setCatChip(); } if(V.deferHist) afterPaint(function(){ if(V.tab === 'lancar') renderHistory(); }); else renderHistory(); }
 
 /* ---------- compra parcelada: uma parcela por mês ---------- */
 function lancarParcelado(total, d, n){
@@ -4333,7 +4346,7 @@ function openBoasVindas(){
   };
   const passos = [
     function(){ const bi = document.querySelector('.brand-ic'), lg = bi ? bi.innerHTML.replace(/id="([^"]+)"/g, 'id="ob-$1"').replace(/url\(#([^)]+)\)/g, 'url(#ob-$1)') : '';
-      return '<div class="ob-logo">'+lg+'</div><h2>Boas-vindas ao Precize</h2><p class="ob-p">Três perguntas rápidas para deixar o app do seu jeito. Leva menos de um minuto.</p>'+
+      return '<div class="ob-logo">'+lg+'</div><h2>Boas-vindas ao Precize</h2><p class="ob-p">Algumas perguntas rápidas para deixar o app do seu jeito. Leva menos de um minuto.</p>'+
       '<button type="button" class="btn full ob-go" data-ob-next>Começar</button><button type="button" class="ob-skip2" data-ob-skip>Agora não</button>'+
       '<p class="ob-priv">'+glyph('lock', 13)+'Suas respostas ficam na sua conta e servem só para ajustar o app a você.</p>'; },
     function(){ const n = perfil().nome;
@@ -4406,7 +4419,7 @@ function jeitoCom(r){
 }
 /* dicas curtas no topo de cada tela (para quem está começando, ou se a pessoa ligar) */
 const DICAS = {
-  lancar:['Anote aqui o que entra e o que sai','Digite o valor e toque em Adicionar. Categoria, data e forma de pagamento já vêm preenchidas: mude só se precisar.'],
+  lancar:['Anote na hora, em segundos','Toque no microfone verde e fale, por exemplo “coca 7 reais no Pix”. Ou digite o valor, escolha a categoria e toque em Adicionar. No fim do dia, é só revisar a lista.'],
   historico:['Tudo o que você anotou fica aqui','Funciona como o extrato do banco. Use a busca para achar qualquer coisa: um nome, um valor ou uma data.'],
   resumo:['Aqui o app conta como está o seu mês','Em cima, se está tudo bem. Logo abaixo, o que precisa da sua atenção, como uma conta para pagar.'],
   planejar:['Aqui você se planeja','Combine quanto quer gastar por mês em cada coisa, cadastre contas que se repetem e guarde dinheiro para um objetivo.']
@@ -4421,17 +4434,86 @@ function renderDica(tab){
   box.innerHTML = '<div class="dica"><span class="dc-ic">'+glyph('spark', 17)+'</span><div class="dc-t"><b>'+d[0]+'</b><span>'+d[1]+'</span></div><button type="button" class="dc-ok" data-dica-ok="'+tab+'">Entendi</button></div>';
 }
 document.addEventListener('click', function(ev){
-  const ok = ev.target.closest('[data-dica-ok]');
+  const ok = ev.target.closest('[data-dica-ok]'); if(ok && ok.getAttribute('data-dica-ok') === 'lancar') setTimeout(renderAviso, 260);
   if(ok){ const v = dicasVistas(), t = ok.getAttribute('data-dica-ok'); if(v.indexOf(t) === -1) v.push(t); try{ localStorage.setItem(DICAS_KEY, JSON.stringify(v)); }catch(e){}
     const card = ok.closest('.dica'); card.classList.add('saindo'); setTimeout(function(){ renderDica(V.tab); }, 220); return; }
   if(ev.target.closest('[data-dica-ob]')){ openBoasVindas(); return; }
   if(ev.target.closest('[data-dica-later]')){ sobreGravar({ done:true }); return; }
 });
+/* ================= teste com as primeiras pessoas: instalar e dar opinião ================= */
+const AVISO_KEY = LS + ':aviso';
+function instalado(){ return !!((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone); }
+function ehIPhone(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+let pedidoInstalar = null;
+window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); pedidoInstalar = e; });
+function avisoLido(){ try{ return JSON.parse(localStorage.getItem(AVISO_KEY) || '{}') || {}; }catch(e){ return {}; } }
+function avisoMarcar(k, v){ const a = avisoLido(); a[k] = v; try{ localStorage.setItem(AVISO_KEY, JSON.stringify(a)); }catch(e){} }
+/* um aviso por vez no topo do Lançar: instalar o app (no navegador do celular) ou pedir a opinião (depois de uns dias de uso) */
+function renderAviso(){
+  const box = $('#avisoBox'); if(!box) return;
+  const a = avisoLido(), agora = Date.now();
+  let h = '';
+  if(jeito().dicas && dicasVistas().indexOf('lancar') === -1){ box.innerHTML = ''; return; }   // um de cada vez: primeiro a dica do Lançar
+  if(TOUCH && !instalado() && !(a.instalar && agora - a.instalar < 5 * 864e5)){
+    h = '<div class="dica aviso-card"><span class="dc-ic">'+glyph('down', 17)+'</span><div class="dc-t"><b>Instale o Precize no celular</b><span>Ele abre como um app, em tela cheia, direto da tela de início.</span>'+
+      '<div class="av-acts"><button type="button" class="capbtn" data-instalar>Como instalar</button><button type="button" class="av-depois" data-aviso-fechar="instalar">Agora não</button></div></div></div>';
+  } else {
+    const vivos = live(all()), primeiro = vivos.reduce(function(m, e){ const t = e.ts || ''; return t && (!m || t < m) ? t : m; }, '');
+    const dias = primeiro ? (agora - new Date(primeiro).getTime()) / 864e5 : 0;
+    if(!a.opiniao && vivos.length >= 5 && dias >= 5){
+      h = '<div class="dica aviso-card"><span class="dc-ic">'+glyph('mega', 17)+'</span><div class="dc-t"><b>Já são alguns dias de Precize!</b><span>O que está achando? Sua opinião ajuda a deixar o app do jeito certo.</span>'+
+        '<div class="av-acts"><button type="button" class="capbtn" data-opiniao>Dar minha opinião</button><button type="button" class="av-depois" data-aviso-fechar="opiniao">Depois</button></div></div></div>';
+    }
+  }
+  box.innerHTML = h;
+}
+document.addEventListener('click', function(ev){
+  const f = ev.target.closest('[data-aviso-fechar]'); if(f){ avisoMarcar(f.getAttribute('data-aviso-fechar'), Date.now()); renderAviso(); return; }
+  if(ev.target.closest('#avisoBox [data-instalar]')){ abrirInstalar(); return; }
+  if(ev.target.closest('#avisoBox [data-opiniao]')){ abrirOpiniao(); return; }
+});
+function abrirInstalar(){
+  const ios = ehIPhone();
+  const passo = function(n, txt){ return '<div class="inst-p"><b>'+n+'</b><span>'+txt+'</span></div>'; };
+  const SHARE = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Compartilhar"><path d="M12 15V3.5M7.5 7.5 12 3l4.5 4.5"/><path d="M8 10.5H6.5A1.5 1.5 0 0 0 5 12v7.5A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V12a1.5 1.5 0 0 0-1.5-1.5H16"/></svg>';
+  let h;
+  if(ios) h = '<div class="inst">'+passo(1, 'Abra este link no <b>Safari</b>.')+passo(2, 'Toque em <b>Compartilhar</b> '+SHARE+', na barra de baixo (ou em ••• e depois Compartilhar).')+
+      passo(3, 'Role e toque em <b>Adicionar à Tela de Início</b>.')+passo(4, 'Toque em <b>Adicionar</b>. Pronto: abra o Precize pelo ícone.')+'</div>';
+  else h = (pedidoInstalar ? '<button type="button" class="btn full" data-inst-agora style="margin-bottom:16px">Instalar agora</button>' : '')+
+      '<div class="inst">'+passo(1, 'Abra este link no <b>Chrome</b>.')+passo(2, 'Toque no menu <b>⋮</b>, no canto de cima.')+passo(3, 'Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.')+passo(4, 'Abra o Precize pelo ícone.')+'</div>';
+  h += '<div class="sec-f">Seus dados ficam na sua conta: entrando de novo no app instalado, está tudo lá.</div>';
+  const sh = openSheet({ title:'Instalar o Precize', small:true, html:h });
+  const b = $('[data-inst-agora]', sh);
+  if(b) b.addEventListener('click', async function(){ try{ pedidoInstalar.prompt(); const r = await pedidoInstalar.userChoice; pedidoInstalar = null; closeSheet(); if(r && r.outcome === 'accepted') island('Precize instalado'); }catch(e){ island('Use o menu do Chrome para instalar', null, true); } });
+}
+function abrirOpiniao(){
+  const st = { usaria:'' };
+  const h = '<p class="sh-p">Você usaria o Precize no seu dia a dia?</p>'+
+    '<div class="op-esc">'+[['sim','Sim'],['talvez','Talvez'],['nao','Não']].map(function(o){ return '<button type="button" class="cap" data-op="'+o[0]+'" aria-pressed="false">'+o[1]+'</button>'; }).join('')+'</div>'+
+    '<textarea class="fala-campo" id="opTexto" rows="4" placeholder="O que você mais gostou? O que atrapalhou ou faltou?" aria-label="Sua opinião"></textarea>'+
+    '<div class="sec-f">Vai direto para quem está criando o app. Pode falar à vontade.</div>';
+  const sh = openSheet({ title:'Sua opinião', small:true, action:'Enviar', html:h, onAction:async function(){
+    const texto = $('#opTexto', sh).value.trim();
+    if(!st.usaria && !texto){ island('Escolha uma resposta ou escreva algo', null, true); return; }
+    const vivos = live(all());
+    const dado = { usaria:st.usaria, texto:texto, em:nowISO(), versao:(document.querySelector('meta[name="precize-versao"]') || {}).content || '', lancamentos:vivos.length,
+      voz:vivos.filter(function(e){ return e.voz; }).length, instalado:instalado(), aparelho:navigator.userAgent.slice(0, 160), perfil:sobre() };
+    sheetOcupado(sh, true);
+    try{
+      const db = contaUser() && window.__FB.db();
+      if(db) await db.doc('feedback/'+uid()).set(dado);
+      else { const l = JSON.parse(localStorage.getItem(LS+':opinioes') || '[]'); l.push(dado); localStorage.setItem(LS+':opinioes', JSON.stringify(l)); }
+    }catch(e){ sheetOcupado(sh, false); island('Não deu para enviar agora. Tente de novo.', null, true); return; }
+    avisoMarcar('opiniao', Date.now()); closeSheet(); renderAviso(); haptic(10); island('Obrigado! Sua opinião foi enviada');
+  }});
+  sh.addEventListener('click', function(ev){ const b = ev.target.closest('[data-op]'); if(!b) return; st.usaria = b.getAttribute('data-op');
+    $$('[data-op]', sh).forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); haptic(5); });
+}
 /* escolher uma resposta em Meu perfil */
 function abrirEscolha(campo){
   const cfg = {
     idade:['Sua idade', IDADES, 'Usamos para ajustar o tamanho do texto e o jeito de mostrar as coisas.'],
-    genero:['Como você se identifica', GENEROS, 'Ajuda o app e, em breve, a IA a falar com você do jeito certo.'],
+    genero:['Como você se identifica', GENEROS, 'Ajuda o app a falar com você do jeito certo.'],
     exp:['Você e as suas finanças', EXPS, 'Define se o app começa mais simples ou com mais números.'],
     modo:['Visual', [['auto','Automático','Pelo seu perfil: '+(jeito().modo === 'essencial' ? 'Essencial' : 'Completo')],['essencial','Essencial','Menos números por tela e mais explicações'],['completo','Completo','Tudo à mostra, com gráficos e comparações']], ''],
     tema:['Tema', TEMAS, ''],
@@ -4581,14 +4663,19 @@ function impCSV(txt){
 }
 /* ---------- palpites: categoria pelo que a pessoa já lançou, e depois por palavras ---------- */
 const IMP_PALAVRAS = [
-  [/uber|99app|99 |cabify|taxi|onibus|metro|combustivel|posto|shell|ipiranga|petrobras|estacionamento|pedagio/, 'Transporte'],
-  [/ifood|rappi|restaurante|lanchonete|lanche|almoco|janta|cafe da manha|padaria|pizza|burger|hamburguer|acai|sorvete|cafe|bar |mc donalds|subway|habib/, 'Alimentação'],
+  [/uber|99app|99 |cabify|taxi|onibus|metro|combustivel|gasolina|etanol|posto|shell|ipiranga|petrobras|estacionamento|pedagio|passagem de onibus|bilhete unico|oficina|mecanico|ipva|seguro do carro/, 'Transporte'],
+  [/hotel|pousada|airbnb|passagem|aereo|aeroporto|viagem|hospedagem|latam|gol |azul /, 'Viagem'],
+  [/petshop|pet shop|racao|veterinari|banho e tosa|petz|cobasi/, 'Pets'],
+  [/salao|cabelo|cabeleireir|barbeir|manicure|unha|maquiagem|perfume|sobrancelha|depilacao|estetica|boticario|natura/, 'Beleza'],
+  [/ifood|rappi|restaurante|lanchonete|lanche|almoco|janta|cafe da manha|padaria|pizza|burger|hamburguer|acai|sorvete|cafe|bar |mc donalds|subway|habib|coca|refrigerante|refri|cerveja|bebida|suco|salgado|pastel|doce|chocolate|marmita|churrasco|sushi|delivery/, 'Alimentação'],
   [/roupa|tenis|camisa|camiseta|calca|sapato|vestido|renner|riachuelo|zara|shein/, 'Roupas'],
   [/mercado|supermercado|atacad|assai|carrefour|big |angeloni|fort |hortifruti|acougue/, 'Mercado'],
-  [/farmacia|drogaria|panvel|raia|pague menos|clinica|hospital|laboratorio|dentista|unimed|plano de saude/, 'Saúde'],
+  [/farmacia|drogaria|panvel|raia|pague menos|clinica|hospital|laboratorio|dentista|unimed|plano de saude|remedio|consulta|exame|academia|smartfit|psicolog|medico/, 'Saúde'],
   [/netflix|spotify|prime|disney|hbo|max |youtube|icloud|google one|apple.com|assinatura/, 'Assinaturas'],
   [/aluguel|condominio|luz|energia|celesc|agua|casan|internet|vivo|claro|tim |oi fibra|gas /, 'Moradia'],
-  [/cinema|teatro|show|ingresso|steam|playstation|xbox|viagem|hotel|airbnb|passagem/, 'Lazer'],
+  [/cinema|teatro|show|ingresso|steam|playstation|xbox|viagem|hotel|airbnb|passagem|jogo|festa|balada/, 'Lazer'],
+  [/presente|aniversario|lembrancinha/, 'Presentes'],
+  [/movel|moveis|decoracao|utensilio|material de construcao|leroy|tok stok|reforma|eletrodomestico/, 'Casa'],
   [/escola|faculdade|curso|udemy|alura|livraria|papelaria/, 'Educação'],
   [/salario|pagamento de salario|folha|pro labore|prolabore/, 'Salário'],
   [/pix recebido|transferencia recebida|ted recebida|deposito/, 'Outros']
@@ -6137,6 +6224,9 @@ function renderConta(){
     (p.nome ? '<b class="me-name">'+esc(p.nome)+'</b>' : '<button type="button" class="me-add" data-apelido>Adicionar nome</button>')+
     (p.conta ? '<small class="me-mail">'+esc(p.email)+'</small>'+(p.verificado ? '<span class="me-ok">'+glyph('shieldck', 13)+'E-mail verificado</span>' : '<button type="button" class="me-warn" data-verificar>Verificar e-mail</button>') : '')+
   '</div></div>';
+  h += '<div class="sec-h">Teste do Precize</div><div class="group">'+linhaConta('data-opiniao', 'mega', '', 'Dar minha opinião', '')+
+    (instalado() ? '' : linhaConta('data-instalar', 'down', '', 'Instalar na tela de início', ''))+'</div>'+
+    '<div class="sec-f">Conta o que achou, o que atrapalhou e o que faltou. Vai direto para quem está criando o app.</div>';
   h += '<div class="sec-h">Perfil</div><div class="group">'+
     linhaConta('data-apelido', 'person', '', 'Nome', p.nome || 'Adicionar')+
     linhaConta('data-foto', 'camera', '', 'Foto de perfil', p.foto ? 'Alterar' : 'Adicionar')+'</div>';
@@ -6145,7 +6235,7 @@ function renderConta(){
     linhaConta('data-sobre="idade"', 'calendar', '', 'Idade', rotulo(IDADES, sb.idade) || 'Escolher')+
     linhaConta('data-sobre="genero"', 'person', '', 'Gênero', rotulo(GENEROS, sb.genero) || 'Escolher')+
     linhaConta('data-sobre="exp"', 'spark', '', 'Finanças', rotulo(EXPS, sb.exp) || 'Escolher')+
-    '</div><div class="sec-f">Serve para o app se ajustar a você e, em breve, para a IA te ajudar melhor. Só você vê.</div>';
+    '</div><div class="sec-f">Serve para o app se ajustar a você. Só você vê.</div>';
   h += '<div class="sec-h">Login e segurança</div><div class="group">'+
     linhaConta('data-email', 'mail', '', 'E-mail', p.conta ? p.email : 'Mudar', ' acct')+
     linhaConta('data-senha', 'lock', '', 'Senha', 'Mudar')+
@@ -6166,7 +6256,7 @@ function renderConta(){
     '</div><div class="sec-f">O modo discreto esconde os valores em todo o app. Ele também liga pelo olho no topo das abas.</div>';
   h += '<div class="sec-h">Ajustes</div><div class="group">'+linhaConta('data-go-ajustes', 'gear', '', 'Ajustes do app', 'Listas e backup')+'</div>';
   if(p.conta) h += '<div class="out-acts"><button type="button" class="out-btn" data-signout>Sair da conta</button><button type="button" class="del-btn" data-excluir>Excluir conta</button></div>';
-  h += '<div class="me-foot">Precize<br>Versão 2026.10</div>';
+  h += '<div class="me-foot">Precize<br>Versão 2026.10 · teste</div>';
   $('#conta').innerHTML = h;
 }
 function abrirVidro(){
@@ -6402,6 +6492,8 @@ function abrirRecorte(file){
 }
 $('#conta').addEventListener('click', function(ev){
   if(ev.target.closest('[data-trava]')){ abrirTrava(); return; }
+  if(ev.target.closest('[data-opiniao]')){ abrirOpiniao(); return; }
+  if(ev.target.closest('[data-instalar]')){ abrirInstalar(); return; }
   if(ev.target.closest('[data-lembretes]')){ abrirLembretes(); return; }
   const sbx = ev.target.closest('[data-sobre]'); if(sbx){ abrirEscolha(sbx.getAttribute('data-sobre')); return; }
   const t = ev.target.closest('[data-apelido],[data-foto],[data-email],[data-senha],[data-verificar],[data-excluir],[data-go-ajustes],[data-vidro]'); if(!t) return;
