@@ -1873,20 +1873,9 @@ html,body{background-color:var(--bg) !important}
 .mic-btn{flex:none;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;color:#fff;
   background:linear-gradient(180deg,var(--tint-2),var(--tint));box-shadow:0 6px 16px color-mix(in srgb,var(--tint) 32%,transparent);transition:transform .25s var(--pop-ease)}
 .mic-btn:active{transform:scale(.92)}
-.fala-ouvir{display:flex;flex-direction:column;align-items:center;gap:14px;padding:8px 0 6px;text-align:center}
-.fala-mic{width:88px;height:88px;border-radius:50%;border:0;display:grid;place-items:center;color:#fff;cursor:pointer;
-  background:linear-gradient(180deg,var(--tint-2),var(--tint));box-shadow:0 10px 26px color-mix(in srgb,var(--tint) 36%,transparent)}
-.fala-mic.on{animation:falaPulso 1.3s ease-in-out infinite}
-@keyframes falaPulso{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--tint) 45%,transparent),0 10px 26px color-mix(in srgb,var(--tint) 36%,transparent)}50%{box-shadow:0 0 0 16px color-mix(in srgb,var(--tint) 0%,transparent),0 10px 26px color-mix(in srgb,var(--tint) 36%,transparent)}}
-.fala-st{font-size:15px;color:var(--label-2);min-height:20px}
-.fala-txt{font-size:19px;font-weight:600;line-height:1.35;min-height:26px;color:var(--label)}
-.fala-ex{font-size:13.5px;color:var(--label-2);line-height:1.45}
-.fala-ou{display:flex;align-items:center;justify-content:center;gap:5px;font-size:13.5px;color:var(--label-2);margin:14px 0 8px}
-.fala-ou svg{color:var(--tint)}
-.fala-st.aviso{color:var(--warn);font-weight:600;line-height:1.4}
-.fala-cod{font-weight:500;color:var(--label-2)}
-.fala-campo.destaque{box-shadow:inset 0 0 0 2px var(--tint)}
-.fala-campo{width:100%;min-height:64px;resize:none;border:0;border-radius:16px;padding:13px 14px;font:inherit;font-size:17px;color:var(--label);background:var(--inset-bg);outline:none}
+.fala-campo{width:100%;min-height:92px;resize:none;border:0;border-radius:16px;padding:14px 15px;font:inherit;font-size:18px;line-height:1.4;color:var(--label);background:color-mix(in srgb,var(--label) 5%,var(--sheet-base));outline:none;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--tint) 55%,transparent)}
+.fala-dica{display:flex;align-items:center;justify-content:center;gap:5px;font-size:14.5px;color:var(--label-2);margin:12px 0 16px}
+.fala-dica svg{color:var(--tint)}
 .fala-disse{display:flex;gap:10px;align-items:flex-start;background:var(--inset-bg);border-radius:16px;padding:12px 14px;margin-bottom:14px;font-size:14.5px;color:var(--label-2);line-height:1.4}
 .fala-disse svg{flex:none;color:var(--tint);margin-top:1px}
 .fala-disse q{flex:1;color:var(--label);font-weight:500}
@@ -3555,65 +3544,17 @@ function falaEntender(texto){
   return r;
 }
 const MIC_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>';
-function falaReconhecedor(){ const R = window.SpeechRecognition || window.webkitSpeechRecognition; return R ? new R() : null; }
-/* tela de ouvir: grava, mostra o que entendeu ao vivo e passa para a confirmação */
+/* tela de falar: só o ditado do teclado do iPhone (o reconhecimento de voz não funciona no app instalado na tela de início) */
 function abrirFala(){
-  const temVoz = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-  let rec = null, ouvindo = false, texto = '', fim = false, ouviuAlgo = false, tVigia = 0, tPausa = 0;
-  const h = '<div class="fala-ouvir" id="faOuvir">'+
-      '<button type="button" class="fala-mic" id="faMic" aria-label="Falar"'+(temVoz ? '' : ' hidden')+'>'+MIC_SVG.replace(/width="20" height="20"/, 'width="36" height="36"')+'</button>'+
-      '<div class="fala-st" id="faSt">'+(temVoz ? 'Toque no microfone e fale' : '')+'</div>'+
-      '<div class="fala-txt" id="faTxt"></div>'+
-      '<div class="fala-ex">Por exemplo: <b>“mercado, 300 reais, no Pix”</b>, <b>“Uber 23,50 ontem”</b> ou <b>“recebi 800 do freela”</b>.</div>'+
-    '</div>'+
-    // o campo fica sempre à mostra: o microfone do teclado do iPhone (ditado) sempre funciona
-    '<div id="faDigitar"><div class="fala-ou">'+(temVoz ? 'ou toque no campo e use o '+MIC_SVG.replace(/width="20" height="20"/, 'width="14" height="14"')+' do teclado' : 'Toque no campo e use o '+MIC_SVG.replace(/width="20" height="20"/, 'width="14" height="14"')+' do teclado para ditar')+'</div>'+
-      '<textarea class="fala-campo" id="faCampo" rows="2" placeholder="Diga ou digite: mercado 300 reais no Pix" aria-label="Diga ou digite o lançamento"></textarea>'+
-      '<button type="button" class="btn full" id="faEntender" style="margin-top:12px">Continuar</button></div>';
-  const sh = openSheet({ title:'Falar o lançamento', small:true, html:h, onClose:function(){ fim = true; parar(true); } });
-  const st = $('#faSt', sh), tx = $('#faTxt', sh), mic = $('#faMic', sh), campo = $('#faCampo', sh);
-  const parar = function(abortar){ clearTimeout(tVigia); clearTimeout(tPausa); if(rec){ try{ abortar ? rec.abort() : rec.stop(); }catch(e){} } ouvindo = false; mic.classList.remove('on'); };
-  /* não deu para ouvir: explica e deixa o campo pronto para o ditado do teclado */
-  const teclado = function(msg, codigo){
-    parar(true);
-    st.innerHTML = esc(msg) + (codigo ? ' <small class="fala-cod">('+esc(codigo)+')</small>' : '');
-    st.classList.add('aviso'); campo.classList.add('destaque');
-    if(texto && !campo.value) campo.value = texto;
-  };
-  const seguir = function(frase){ frase = String(frase || '').trim(); if(!frase){ island('Não ouvi nada. Tente de novo.', null, true); return; } fim = true; parar(true); closeSheet(); setTimeout(function(){ confirmarFala(frase); }, 300); };
-  $('#faEntender', sh).addEventListener('click', function(){ seguir(campo.value || texto); });
-  campo.addEventListener('keydown', function(ev){ if(ev.key === 'Enter' && !ev.shiftKey){ ev.preventDefault(); seguir(this.value); } });
-  campo.addEventListener('focus', function(){ if(ouvindo) parar(true); });
-  const ouvir = function(){
-    if(!temVoz){ return; }
-    if(ouvindo){ parar(false); return; }
-    rec = falaReconhecedor();                                   // um novo a cada vez: o iPhone às vezes trava ao reaproveitar
-    if(!rec){ teclado('Este aparelho não reconhece voz aqui. Use o microfone do teclado.'); return; }
-    texto = ''; ouviuAlgo = false; tx.textContent = ''; st.classList.remove('aviso'); campo.classList.remove('destaque');
-    rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
-    const ativo = function(){ ouviuAlgo = true; clearTimeout(tVigia); };
-    rec.onaudiostart = ativo; rec.onsoundstart = ativo; rec.onspeechstart = ativo;
-    rec.onresult = function(ev){
-      ativo(); let f = ''; for(let i=0;i<ev.results.length;i++) f += ev.results[i][0].transcript; texto = f.trim(); tx.textContent = '“'+texto+'”';
-      clearTimeout(tPausa); tPausa = setTimeout(function(){ if(ouvindo){ try{ rec.stop(); }catch(e){} } }, 1700);   // parou de falar: encerra sozinho
-    };
-    rec.onerror = function(ev){ const e = (ev && ev.error) || 'erro'; if(fim) return;
-      if(e === 'aborted') return;
-      if(e === 'no-speech'){ teclado('Não ouvi nada. Toque no microfone e fale de novo, ou use o microfone do teclado.'); return; }
-      if(e === 'not-allowed' || e === 'service-not-allowed') teclado('O iPhone não liberou o reconhecimento de voz para o app. Use o microfone do teclado, no campo abaixo.', e);
-      else teclado('Não deu para ouvir agora. Use o microfone do teclado, no campo abaixo.', e);
-    };
-    rec.onend = function(){ const tinha = ouvindo; ouvindo = false; clearTimeout(tVigia); clearTimeout(tPausa); mic.classList.remove('on'); if(fim) return;
-      if(texto){ seguir(texto); return; }
-      if(tinha && !st.classList.contains('aviso')) teclado(ouviuAlgo ? 'Não entendi. Toque no microfone e fale de novo, ou use o microfone do teclado.' : 'O iPhone não mandou o som para o app. Use o microfone do teclado, no campo abaixo.', ouviuAlgo ? '' : 'sem-audio');
-    };
-    try{ rec.start(); ouvindo = true; mic.classList.add('on'); st.textContent = 'Ouvindo… fale agora'; haptic(8); }
-    catch(e){ teclado('Não deu para ligar o microfone. Use o microfone do teclado, no campo abaixo.', (e && e.name) || 'start'); return; }
-    // vigia: se em 4 s o iPhone não mandar nenhum som, não adianta esperar
-    tVigia = setTimeout(function(){ if(ouvindo && !ouviuAlgo && !texto) teclado('O iPhone não mandou o som para o app. Use o microfone do teclado, no campo abaixo.', 'sem-audio'); }, 4000);
-  };
-  mic.addEventListener('click', ouvir);
-  if(temVoz) ouvir();
+  const h = '<textarea class="fala-campo" id="faCampo" rows="3" enterkeyhint="go" placeholder="Ex.: mercado 300 reais no Pix" aria-label="Fale ou digite o lançamento"></textarea>'+
+    '<div class="fala-dica">Toque no '+MIC_SVG.replace(/width="20" height="20"/, 'width="15" height="15"')+' do teclado e fale</div>'+
+    '<button type="button" class="btn full" id="faEntender">Continuar</button>';
+  const sh = openSheet({ title:'Falar o lançamento', small:true, html:h });
+  const campo = $('#faCampo', sh);
+  try{ campo.focus({ preventScroll:true }); }catch(e){}            // no mesmo toque: o teclado já sobe
+  const seguir = function(){ const frase = campo.value.trim(); if(!frase){ island('Fale ou digite o lançamento', null, true); campo.focus(); return; } closeSheet(); setTimeout(function(){ confirmarFala(frase); }, 300); };
+  $('#faEntender', sh).addEventListener('click', seguir);
+  campo.addEventListener('keydown', function(ev){ if(ev.key === 'Enter' && !ev.shiftKey){ ev.preventDefault(); seguir(); } });
 }
 /* confirmação: mostra o que o app entendeu; dá para corrigir tudo antes de lançar */
 function confirmarFala(frase){
