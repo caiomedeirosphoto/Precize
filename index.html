@@ -2221,6 +2221,12 @@ body.private .fe-num,body.private .fe-io b,body.private .fe-linha b{filter:blur(
 .fe-linha.comp.ok b{color:var(--pos)} .fe-linha.comp.alerta b{color:var(--warn)}
 
 
+/* barra de abas: mais perto da borda de baixo (sem encostar na barrinha do iPhone) e destaque com a mesma folga dos quatro lados */
+@media (max-width:1023px){
+  .tabbar{bottom:max(10px,calc(env(safe-area-inset-bottom,0px) - 10px)) !important;padding:5px !important}
+  .tabbar .lens{top:5px !important;bottom:5px !important;left:5px !important;width:calc((100% - 10px)/4) !important}
+}
+
 /* =====================================================================
    TEMA CLARO: mais contraste nos textos secundários, nos links verdes e nos totais
    (só vale no claro; o escuro continua exatamente como estava)
