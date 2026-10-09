@@ -1867,6 +1867,26 @@ html,body{background-color:var(--bg) !important}
 .ob-in:focus{box-shadow:inset 0 0 0 2px var(--tint),var(--gshadow)}
 .ob-err{min-height:20px;font-size:13.5px;color:var(--neg);margin:8px 0 4px}
 .ob-av{display:flex;justify-content:center;margin:6px 0 26px}
+/* lançar falando */
+.desc-row{display:flex;gap:8px;align-items:center}
+.desc-row .desc{flex:1;min-width:0}
+.mic-btn{flex:none;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(180deg,var(--tint-2),var(--tint));box-shadow:0 6px 16px color-mix(in srgb,var(--tint) 32%,transparent);transition:transform .25s var(--pop-ease)}
+.mic-btn:active{transform:scale(.92)}
+.fala-ouvir{display:flex;flex-direction:column;align-items:center;gap:14px;padding:8px 0 6px;text-align:center}
+.fala-mic{width:88px;height:88px;border-radius:50%;border:0;display:grid;place-items:center;color:#fff;cursor:pointer;
+  background:linear-gradient(180deg,var(--tint-2),var(--tint));box-shadow:0 10px 26px color-mix(in srgb,var(--tint) 36%,transparent)}
+.fala-mic.on{animation:falaPulso 1.3s ease-in-out infinite}
+@keyframes falaPulso{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--tint) 45%,transparent),0 10px 26px color-mix(in srgb,var(--tint) 36%,transparent)}50%{box-shadow:0 0 0 16px color-mix(in srgb,var(--tint) 0%,transparent),0 10px 26px color-mix(in srgb,var(--tint) 36%,transparent)}}
+.fala-st{font-size:15px;color:var(--label-2);min-height:20px}
+.fala-txt{font-size:19px;font-weight:600;line-height:1.35;min-height:26px;color:var(--label)}
+.fala-ex{font-size:13.5px;color:var(--label-2);line-height:1.45}
+.fala-campo{width:100%;min-height:84px;resize:none;border:0;border-radius:16px;padding:13px 14px;font:inherit;font-size:17px;color:var(--label);background:var(--inset-bg);outline:none}
+.fala-disse{display:flex;gap:10px;align-items:flex-start;background:var(--inset-bg);border-radius:16px;padding:12px 14px;margin-bottom:14px;font-size:14.5px;color:var(--label-2);line-height:1.4}
+.fala-disse svg{flex:none;color:var(--tint);margin-top:1px}
+.fala-disse q{flex:1;color:var(--label);font-weight:500}
+.fala-disse button{flex:none;border:0;background:none;color:var(--tint);font:inherit;font-weight:700;font-size:14px;cursor:pointer;padding:0}
+.drow .v.falta{color:var(--warn);font-weight:700}
 .ob-temas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .ob-tema{display:flex;flex-direction:column;align-items:center;gap:4px;border:0;cursor:pointer;font:inherit;color:var(--label);padding:12px 8px 14px;border-radius:20px;
   background:linear-gradient(180deg,var(--gl1),var(--gl2));box-shadow:var(--gshadow),0 0 0 .5px var(--gline) inset;transition:transform .25s var(--pop-ease),box-shadow .2s ease}
@@ -3272,7 +3292,8 @@ function renderComposer(){
   CS.area = 'pessoal';
   let h = '<div class="tseg" id="cType" data-t="'+CS.t+'"><button type="button" data-v="out" aria-pressed="'+(CS.t==='out')+'">− Saída</button><button type="button" data-v="in" aria-pressed="'+(CS.t==='in')+'">+ Entrada</button></div>';
   h += '<div class="amount" id="cAmt"><span>R$</span><input id="cVal" type="text" inputmode="decimal" enterkeyhint="done" placeholder="0" autocomplete="off" aria-label="Valor"></div>';
-  h += '<input id="cDesc" class="desc" type="text" maxlength="80" enterkeyhint="done" placeholder="Descrição (opcional)" autocomplete="off" aria-label="Descrição">';
+  h += '<div class="desc-row"><input id="cDesc" class="desc" type="text" maxlength="80" enterkeyhint="done" placeholder="Descrição (opcional)" autocomplete="off" aria-label="Descrição">'+
+    '<button type="button" class="mic-btn" id="cMic" aria-label="Falar o lançamento" title="Falar o lançamento">'+MIC_SVG+'</button></div>';
   h += '<div class="sugs" id="cSugs" aria-label="Sugestões"></div>';
   h += '<div class="chips" id="cChips">'+
     '<button type="button" class="chip'+(CS.cat ? '' : ' vazio')+'" id="oCat" aria-expanded="false" aria-label="Categoria">'+catChip(CS.cat)+'</button>'+
@@ -3323,6 +3344,7 @@ $('#composer').addEventListener('click', function(ev){
     $$('#cType button').forEach(function(b){ b.setAttribute('aria-pressed', b === tb ? 'true' : 'false'); });
     CS.cat = ''; setCatChip(); cpk.closeAll(); const ab = $('#cAdd'); clearTimeout(ab._t); ab.classList.remove('done'); ab.dataset.t = CS.t; ab.innerHTML = addLabel(); updKb(); haptic(5); return; }
   if(ev.target.closest('#oPaid')){ CS.paid = !CS.paid; syncPaid(); return; }
+  if(ev.target.closest('#cMic')){ cpk.closeAll(); abrirFala(); return; }
   if(ev.target.closest('#cAdd')) addFromComposer();
 });
 const cpk = pickers($('#composer'), [
@@ -3414,6 +3436,209 @@ document.addEventListener('visibilitychange', function(){
 });
 V.lastDay = todayISO();
 $('#composer').addEventListener('keydown', function(ev){ if(ev.key === 'Enter' && (ev.target.id === 'cVal' || ev.target.id === 'cDesc')){ ev.preventDefault(); addFromComposer(); } });
+/* ================= lançar falando =================
+   O iPhone transforma a fala em texto (grátis, do próprio aparelho); o app entende a frase com regras simples
+   e mostra uma confirmação antes de lançar. Sem reconhecimento de voz, vira um campo para o ditado do teclado. */
+const FALA_NUM = { zero:0, um:1, uma:1, dois:2, duas:2, tres:3, quatro:4, cinco:5, seis:6, sete:7, oito:8, nove:9, dez:10, onze:11, doze:12, treze:13, quatorze:14, catorze:14, quinze:15,
+  dezesseis:16, dezessete:17, dezoito:18, dezenove:19, vinte:20, trinta:30, quarenta:40, cinquenta:50, sessenta:60, setenta:70, oitenta:80, noventa:90,
+  cem:100, cento:100, duzentos:200, duzentas:200, trezentos:300, trezentas:300, quatrocentos:400, quinhentos:500, seiscentos:600, setecentos:700, oitocentos:800, novecentos:900 };
+/* "mil e quinhentos" -> 1500; devolve null se não houver número por extenso */
+function falaExtenso(pal){
+  let total = 0, atual = 0, achou = false;
+  pal.forEach(function(w){
+    if(w === 'e') return;
+    if(w === 'mil'){ total += (atual || 1) * 1000; atual = 0; achou = true; return; }
+    if(FALA_NUM[w] != null){ atual += FALA_NUM[w]; achou = true; }
+  });
+  return achou ? total + atual : null;
+}
+/* troca números por extenso por algarismos: "trezentos e cinquenta reais" -> "350 reais" */
+function falaAlgarismos(t){
+  const ws = t.split(/\s+/), out = []; let buf = [];
+  const solta = function(prox){
+    if(!buf.length) return;
+    let sobra = ''; while(buf.length && buf[buf.length-1] === 'e'){ buf.pop(); sobra = 'e'; }
+    // "um" e "uma" sozinhos são artigo ("uma pizza"), a não ser antes de reais ou mil
+    if(buf.length === 1 && (buf[0] === 'um' || buf[0] === 'uma') && !/^(reais|real|conto|contos|mil)$/.test(prox || '')) out.push(buf[0]);
+    else { const n = falaExtenso(buf); if(n != null) out.push(String(n)); }
+    if(sobra) out.push(sobra);
+    buf = [];
+  };
+  ws.forEach(function(w){ if(FALA_NUM[w] != null || w === 'mil' || (w === 'e' && buf.length)) buf.push(w); else { solta(w); out.push(w); } });
+  solta('');
+  return out.join(' ');
+}
+function falaEntender(texto){
+  const r = { t:'out', v:0, desc:'', cat:'', met:'', d:todayISO(), px:1, st:'pago', faltou:[] };
+  let t = ' ' + norm(texto).replace(/[!?;]/g, ' ').replace(/r\$\s*/g, ' rs ') + ' ';
+  t = ' ' + falaAlgarismos(t.trim()) + ' ';
+  // tipo
+  if(/\b(recebi|ganhei|entrou|entrada|salario|freela|freelance|me pagou|me pagaram|pagaram|reembolso|vendi|venda|rendimento|rendeu|caiu na conta)\b/.test(t)) r.t = 'in';
+  // pendente
+  if(/\b(pendente|a pagar|vou pagar|nao paguei|ainda nao paguei|vence|vencimento|a receber|vou receber)\b/.test(t)) r.st = 'pend';
+  // parcelas: "em 3 vezes", "3x", "parcelado em 3"
+  const pm = t.match(/\b(\d{1,2})\s*(?:x|vezes)\b/) || t.match(/\bparcelad[oa] em (\d{1,2})\b/);
+  if(pm && +pm[1] > 1) r.px = Math.min(24, +pm[1]);
+  // data
+  let tsem = t;
+  if(/\banteontem\b/.test(t)) r.d = shiftDay(todayISO(), -2);
+  else if(/\bontem\b/.test(t)) r.d = shiftDay(todayISO(), -1);
+  else if(/\bamanha\b/.test(t)) r.d = shiftDay(todayISO(), 1);
+  const dm = t.match(/\bdia (\d{1,2})\b/);
+  if(dm && +dm[1] >= 1 && +dm[1] <= 31){ const ym = ymNow(); r.d = ym + '-' + pad(Math.min(+dm[1], lastDay(ym))); }
+  // valor: o número junto de reais/rs vale mais; tira dia e parcelas da conta
+  tsem = t.replace(/\bdia \d{1,2}\b/g, ' ').replace(/\b\d{1,2}\s*(?:x|vezes)\b/g, ' ').replace(/\bparcelad[oa] em \d{1,2}\b/g, ' ');
+  const NUM = '(\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)';
+  const cent = function(x){ return parseMoney(x); };
+  let m = tsem.match(new RegExp('\\brs\\s*' + NUM)) || tsem.match(new RegExp(NUM + '\\s*(?:reais|real|conto|contos|pila|pilas)\\b'));
+  if(m){
+    r.v = cent(m[1]) || 0;
+    const c = tsem.slice(m.index + m[0].length).match(/^\s*(?:reais\s*)?e\s*(\d{1,2})\s*(?:centavos?)?\b/);
+    if(c && r.v && r.v % 100 === 0) r.v += +c[1];
+  } else {
+    // sem "reais": fica o maior número dito ("3 cervejas 30" -> 30)
+    (tsem.match(new RegExp('\\b' + NUM + '\\b', 'g')) || []).forEach(function(x){ const c = cent(x) || 0; if(c > r.v) r.v = c; });
+  }
+  // forma de pagamento: cartão pelo nome, depois as formas da lista
+  const mets = metsTodos();
+  const temMet = function(alvo){ return mets.filter(function(x){ return norm(x) === alvo; })[0] || ''; };
+  cartoes().forEach(function(c){ if(!r.met && norm(c.nome).length > 1 && t.indexOf(' ' + norm(c.nome) + ' ') > -1) r.met = c.nome; });
+  if(!r.met){
+    if(/\bpix\b/.test(t)) r.met = temMet('pix') || 'Pix';
+    else if(/\b(credito|no cartao de credito|parcelad)/.test(t) || r.px > 1) r.met = temMet('credito') || 'Crédito';
+    else if(/\bdebito\b/.test(t)) r.met = temMet('debito') || 'Débito';
+    else if(/\b(dinheiro|especie|em maos)\b/.test(t)) r.met = temMet('dinheiro') || 'Dinheiro';
+    else if(/\bboleto\b/.test(t)) r.met = temMet('boleto') || 'Boleto';
+    else if(/\b(transferencia|ted|doc)\b/.test(t)) r.met = temMet('transferencia') || 'Transferência';
+    else if(/\bcartao\b/.test(t)) r.met = temMet('credito') || 'Crédito';
+    else mets.forEach(function(x){ if(!r.met && norm(x).length > 2 && t.indexOf(' ' + norm(x) + ' ') > -1) r.met = x; });
+  }
+  if(!r.met){ r.met = S.config.mets[0] || 'Pix'; r.faltou.push('met'); }
+  // descrição: o que sobra depois de tirar valor, forma, data e palavras de ligação
+  let d = tsem.replace(new RegExp('\\brs\\s*' + NUM, 'g'), ' ').replace(new RegExp(NUM + '\\s*(?:reais|real|conto|contos|pila|pilas)\\b', 'g'), ' ')
+    .replace(new RegExp('\\b' + NUM + '\\b', 'g'), ' ')
+    .replace(/\b(e\s*)?\d{1,2}\s*centavos?\b/g, ' ').replace(/\bcentavos?\b/g, ' ')
+    .replace(/\b(pag[oa]s?|paguei|pagando|pagamento|pago|gastei|gasto|comprei|compra|compras|lancar|lanca|lancamento|registrar|anota|anotar|uma|um|de|do|da|dos|das|no|na|nos|nas|em|com|pelo|pela|via|por|pra|para|o|a|os|as|e|foi|valor|reais|real|hoje|ontem|anteontem|amanha|agora|recebi|ganhei|entrou|entrada|saida|me pagou|me pagaram|pendente|a pagar|vou pagar|vence|cartao|credito|debito|pix|dinheiro|especie|boleto|transferencia|ted|doc|vezes|parcelado|parcelada|a vista)\b/g, ' ')
+    .replace(/[.,:]/g, ' ');
+  cartoes().forEach(function(c){ d = d.replace(new RegExp('\\b' + norm(c.nome).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' '); });
+  d = d.replace(/\s+/g, ' ').trim();
+  // remonta com as palavras originais (com acento), mantendo "de", "da"... só entre as palavras que ficaram
+  const fica = d ? d.split(' ') : [], orig = String(texto).split(/\s+/).map(function(w){ return w.replace(/^[^\wÀ-ÿ$]+|[^\wÀ-ÿ]+$/g, ''); }).filter(Boolean);
+  const marca = []; let k = 0;
+  orig.forEach(function(w, i){ if(k < fica.length && norm(w) === fica[k]){ marca.push(i); k++; } });
+  let desc = '';
+  if(marca.length){
+    const LIGA = { de:1, do:1, da:1, dos:1, das:1, e:1, com:1, para:1, pra:1 };
+    desc = orig.slice(marca[0], marca[marca.length-1] + 1).filter(function(w, j){ const i = marca[0] + j; return marca.indexOf(i) > -1 || LIGA[norm(w)]; }).join(' ');
+  } else if(d) desc = d;
+  r.desc = desc ? cap(desc).slice(0, 60) : '';
+  // categoria: nome da categoria dito, depois o seu histórico, depois palavras conhecidas
+  const cats = S.config.cats[r.t];
+  cats.forEach(function(c){ if(!r.cat && t.indexOf(' ' + norm(c) + ' ') > -1) r.cat = c; });
+  if(!r.cat && r.desc){
+    const nd = norm(r.desc); let melhor = 0;
+    live(all()).forEach(function(e){
+      if(e.t !== r.t || cats.indexOf(e.cat) === -1) return; const en = norm(e.desc); if(en.length < 3) return;
+      const p = en === nd ? 100 : ((nd.indexOf(en) > -1 || en.indexOf(nd) > -1) ? Math.min(en.length, nd.length) : 0);
+      if(p > melhor){ melhor = p; r.cat = e.cat; if(p === 100) r.desc = e.desc; }   // mesmo nome de antes: usa como você escreveu
+    });
+  }
+  if(!r.cat){ for(let i=0;i<IMP_PALAVRAS.length;i++) if(IMP_PALAVRAS[i][0].test(t) && cats.indexOf(IMP_PALAVRAS[i][1]) > -1 && IMP_PALAVRAS[i][1] !== 'Outros'){ r.cat = IMP_PALAVRAS[i][1]; break; } }
+  if(!r.cat) r.faltou.push('cat');
+  if(!r.v) r.faltou.push('v');
+  if(!r.desc) r.desc = r.cat || '';
+  return r;
+}
+const MIC_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>';
+function falaReconhecedor(){ const R = window.SpeechRecognition || window.webkitSpeechRecognition; return R ? new R() : null; }
+/* tela de ouvir: grava, mostra o que entendeu ao vivo e passa para a confirmação */
+function abrirFala(){
+  const rec = falaReconhecedor();
+  let ouvindo = false, texto = '', fim = false;
+  const h = '<div class="fala-ouvir" id="faOuvir">'+
+      '<button type="button" class="fala-mic" id="faMic" aria-label="Falar">'+MIC_SVG.replace(/width="20" height="20"/, 'width="36" height="36"')+'</button>'+
+      '<div class="fala-st" id="faSt">'+(rec ? 'Toque no microfone e fale' : '')+'</div>'+
+      '<div class="fala-txt" id="faTxt"></div>'+
+      '<div class="fala-ex">Por exemplo: <b>“mercado, 300 reais, no Pix”</b>, <b>“Uber 23,50 ontem”</b> ou <b>“recebi 800 do freela”</b>.</div>'+
+    '</div>'+
+    '<div id="faDigitar"'+(rec ? ' hidden' : '')+'><textarea class="fala-campo" id="faCampo" rows="3" placeholder="Toque aqui e use o microfone do teclado para ditar" aria-label="Diga ou digite o lançamento"></textarea>'+
+      '<button type="button" class="btn full" id="faEntender" style="margin-top:12px">Continuar</button></div>';
+  const sh = openSheet({ title:'Falar o lançamento', small:true, html:h, onClose:function(){ fim = true; try{ if(rec && ouvindo) rec.abort(); }catch(e){} } });
+  const st = $('#faSt', sh), tx = $('#faTxt', sh), mic = $('#faMic', sh);
+  const digitar = function(msg){
+    ouvindo = false; mic.classList.remove('on');
+    $('#faDigitar', sh).hidden = false; st.textContent = msg || 'Use o microfone do teclado para ditar';
+    const c = $('#faCampo', sh); if(texto) c.value = texto; setTimeout(function(){ c.focus(); }, 60);
+  };
+  const seguir = function(frase){ frase = String(frase || '').trim(); if(!frase){ island('Não ouvi nada. Tente de novo.', null, true); return; } fim = true; closeSheet(); setTimeout(function(){ confirmarFala(frase); }, 300); };
+  $('#faEntender', sh).addEventListener('click', function(){ seguir($('#faCampo', sh).value); });
+  $('#faCampo', sh).addEventListener('keydown', function(ev){ if(ev.key === 'Enter' && !ev.shiftKey){ ev.preventDefault(); seguir(this.value); } });
+  const ouvir = function(){
+    if(!rec){ digitar(); return; }
+    if(ouvindo){ try{ rec.stop(); }catch(e){} return; }
+    texto = ''; tx.textContent = '';
+    rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    rec.onresult = function(ev){ let f = ''; for(let i=0;i<ev.results.length;i++) f += ev.results[i][0].transcript; texto = f; tx.textContent = '“'+f+'”'; };
+    rec.onerror = function(ev){ const e = ev && ev.error; if(fim) return;
+      digitar(e === 'not-allowed' || e === 'service-not-allowed' ? 'O microfone não foi liberado. Use o microfone do teclado para ditar.' : (e === 'no-speech' ? 'Não ouvi nada. Fale de novo ou dite pelo teclado.' : 'Não deu para ouvir aqui. Use o microfone do teclado.')); };
+    rec.onend = function(){ ouvindo = false; mic.classList.remove('on'); if(fim) return; if(texto) seguir(texto); else if($('#faDigitar', sh).hidden) st.textContent = 'Toque no microfone e fale'; };
+    try{ rec.start(); ouvindo = true; mic.classList.add('on'); st.textContent = 'Ouvindo… toque de novo para parar'; haptic(8); }
+    catch(e){ digitar(); }
+  };
+  mic.addEventListener('click', ouvir);
+  if(rec) ouvir(); else setTimeout(function(){ $('#faCampo', sh).focus(); }, 400);
+}
+/* confirmação: mostra o que o app entendeu; dá para corrigir tudo antes de lançar */
+function confirmarFala(frase){
+  const r = falaEntender(frase);
+  const st = { t:r.t, cat:r.cat, met:r.met, d:r.d, px:r.px };
+  let h = '<div class="fala-disse">'+MIC_SVG.replace(/width="20" height="20"/, 'width="17" height="17"')+'<q>'+esc(frase)+'</q><button type="button" data-fala-de-novo>Falar de novo</button></div>';
+  h += segHTML('fType', [['out','Saída'],['in','Entrada']], st.t, 'v');
+  h += '<div class="amount"><span>R$</span><input id="fVal" type="text" inputmode="decimal" placeholder="0" autocomplete="off" value="'+(r.v ? toInput(r.v) : '')+'" aria-label="Valor" style="font-size:54px"></div>';
+  h += '<div class="group"><label class="cell"><input id="fDesc" class="inl-left" type="text" maxlength="80" placeholder="Descrição" value="'+esc(r.desc)+'" autocomplete="off" aria-label="Descrição"></label></div>';
+  h += '<div class="group" style="margin-top:14px">'+
+    '<button type="button" class="cell drow" id="fCatB" aria-expanded="false"><span class="t grow">Categoria</span><span class="v'+(st.cat ? '' : ' falta')+'" id="fCatT">'+esc(st.cat || 'Escolher')+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+
+    '<button type="button" class="cell drow" id="fMetB" aria-expanded="false"><span class="t grow">Forma</span><span class="v" id="fMetT">'+esc(st.met)+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+
+    '<button type="button" class="cell drow" id="fDiaB" aria-expanded="false"><span class="t grow">Data</span><span class="v" id="fDiaT">'+fmtDay(st.d)+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+
+    '<div class="cell" id="fPxRow"'+(ehCredito(st.met) && st.px > 1 ? '' : ' hidden')+'><span class="t grow">Parcelas</span><span class="v" id="fPxT">'+st.px+'x</span></div>'+
+    '<div class="cell"><span class="t grow">Já está pago</span><label class="switch"><input type="checkbox" id="fPago"'+(r.st !== 'pend' ? ' checked' : '')+' aria-label="Já está pago"><span></span></label></div>'+
+  '</div>';
+  h += '<div class="sec-f">Confira e corrija o que precisar. Só lança quando você tocar em ✓.</div>';
+  const sh = openSheet({ title:'Confere?', action:'Lançar', html:h, onAction:function(){ lancar(); } });
+  const fit = function(){ const el = $('#fVal', sh); el.style.width = Math.max(2, (el.value || '0').length + .6) + 'ch'; };
+  fit(); $('#fVal', sh).addEventListener('input', fit);
+  const syncPx = function(){ $('#fPxRow', sh).hidden = !(ehCredito(st.met) && st.px > 1); };
+  pickers(sh, [
+    { trigger:'#fCatB', kind:'cat', type:function(){ return st.t; }, get:function(){ return st.cat; }, set:function(c){ st.cat = c; const v = $('#fCatT', sh); v.textContent = c; v.classList.remove('falta'); } },
+    { trigger:'#fMetB', kind:'met', get:function(){ return st.met; }, set:function(m){ st.met = m; $('#fMetT', sh).textContent = m; syncPx(); } },
+    { trigger:'#fDiaB', kind:'day', get:function(){ return st.d; }, set:function(d){ st.d = d; $('#fDiaT', sh).textContent = fmtDay(d); } }
+  ]);
+  sh.addEventListener('click', function(ev){
+    const tb = ev.target.closest('#fType button');
+    if(tb){ segSet($('#fType', sh), tb); st.t = tb.getAttribute('data-v');
+      if(S.config.cats[st.t].indexOf(st.cat) === -1){ st.cat = ''; const v = $('#fCatT', sh); v.textContent = 'Escolher'; v.classList.add('falta'); } return; }
+    if(ev.target.closest('[data-fala-de-novo]')){ closeSheet(); setTimeout(abrirFala, 300); }
+  });
+  function lancar(){
+    const v = parseMoney($('#fVal', sh).value);
+    if(!v || v <= 0){ island('Coloque o valor', null, true); $('#fVal', sh).focus(); return; }
+    if(!st.cat){ openCatPicker(st.t, '', function(c){ st.cat = c; $('#fCatT', sh).textContent = c; $('#fCatT', sh).classList.remove('falta'); lancar(); }); return; }
+    const desc = $('#fDesc', sh).value.trim() || st.cat, pago = $('#fPago', sh).checked, cc = (cartaoPorNome(st.met)||{}).id || null;
+    const px = ehCredito(st.met) && st.px > 1 ? st.px : 1, partes = px > 1 ? dividirParcelas(v, px) : [v], pg = px > 1 ? 'p'+uid() : null, novos = [];
+    partes.forEach(function(pv, i){
+      const dd = i === 0 ? st.d : dataParcela(st.d, i);
+      const e = { id:uid(), t:st.t, v:pv, desc:desc, cat:st.cat, area:'pessoal', met:st.met, cc:cc, st:(i === 0 && pago) ? 'pago' : 'pend', obs:'', d:dd, fx:null, q:null, del:null, ts:nowISO(), voz:1 };
+      if(pg){ e.pg = pg; e.pn = i + 1; e.pt = px; }
+      ensureM(ymOf(dd)).push(e); novos.push({ id:e.id, ym:ymOf(dd) });
+    });
+    const meses = {}; novos.forEach(function(x){ meses[x.ym] = 1; }); Object.keys(meses).forEach(saveMonth);
+    V.flash = novos[0].id; V.fresh = novos[0].id;
+    closeSheet(); render(); haptic(10);
+    island((px > 1 ? px+'x de '+money(partes[px-1]) : (st.t === 'out' ? 'Saída de ' : 'Entrada de ') + money(v))+' lançada', function(){
+      novos.forEach(function(x){ S.months[x.ym] = mList(x.ym).filter(function(y){ return y.id !== x.id; }); }); Object.keys(meses).forEach(saveMonth); render();
+    });
+  }
+}
 /* chip de categoria: em branco depois de cada lançamento */
 function setCatChip(){ const b = $('#oCat'); if(!b) return; b.innerHTML = catChip(CS.cat); b.classList.toggle('vazio', !CS.cat); }
 /* lançou sem escolher a categoria: pergunta, e ao escolher já lança */
@@ -4383,7 +4608,8 @@ function impCSV(txt){
 /* ---------- palpites: categoria pelo que a pessoa já lançou, e depois por palavras ---------- */
 const IMP_PALAVRAS = [
   [/uber|99app|99 |cabify|taxi|onibus|metro|combustivel|posto|shell|ipiranga|petrobras|estacionamento|pedagio/, 'Transporte'],
-  [/ifood|rappi|restaurante|lanchonete|padaria|pizza|burger|cafe|bar |mc donalds|subway|habib/, 'Alimentação'],
+  [/ifood|rappi|restaurante|lanchonete|lanche|almoco|janta|cafe da manha|padaria|pizza|burger|hamburguer|acai|sorvete|cafe|bar |mc donalds|subway|habib/, 'Alimentação'],
+  [/roupa|tenis|camisa|camiseta|calca|sapato|vestido|renner|riachuelo|zara|shein/, 'Roupas'],
   [/mercado|supermercado|atacad|assai|carrefour|big |angeloni|fort |hortifruti|acougue/, 'Mercado'],
   [/farmacia|drogaria|panvel|raia|pague menos|clinica|hospital|laboratorio|dentista|unimed|plano de saude/, 'Saúde'],
   [/netflix|spotify|prime|disney|hbo|max |youtube|icloud|google one|apple.com|assinatura/, 'Assinaturas'],
