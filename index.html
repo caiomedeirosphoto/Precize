@@ -1446,6 +1446,23 @@ button.lim:active{transform:scale(.985)}
 .pf-t .me-ok{display:inline-flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;font-weight:700;color:var(--pos);background:color-mix(in srgb,var(--pos) 14%,transparent);padding:5px 10px;border-radius:100px}
 .pf-t .me-warn{margin-top:7px}
 .pf-t .me-add{border:0;background:none;padding:0;font:inherit;font-size:18px;font-weight:700;color:var(--tint);cursor:pointer}
+.hub-me{display:flex;align-items:center;gap:14px;width:100%;padding:14px 14px 14px 16px;margin:4px 0 22px;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.hub-me .av{flex:none}
+.hub-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.hub-t b{font-size:20px;font-weight:700;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hub-t small{font-size:14px;color:var(--label-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hub-sub{font-size:13px;color:var(--label-3);margin-top:3px}
+.hub-warn{align-self:flex-start;margin-top:6px;font-size:12px;font-weight:700;color:var(--warn,#FF9F0A);background:color-mix(in srgb,var(--warn,#FF9F0A) 15%,transparent);padding:4px 9px;border-radius:100px}
+.hub-me .chev{color:var(--label-3)}
+.hub-sair{justify-content:center;text-align:center}
+.pf-top{display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0 22px}
+.pf-av{position:relative;border:0;background:none;padding:0;cursor:pointer;border-radius:50%}
+.pf-cam{position:absolute;right:-2px;bottom:-2px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--tint);color:#fff;border:3px solid var(--bg)}
+.pf-nome{display:block;margin-top:14px;font-size:24px;font-weight:800;letter-spacing:-.025em}
+.pf-mail{display:block;margin-top:3px;font-size:15px;color:var(--label-2)}
+.pf-top .me-add{margin-top:14px}
+.pf-sair{margin-top:30px}
+.cell .v.warn{color:var(--warn,#FF9F0A)}
 .out-acts{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:26px}
 .out-btn{border:0;background:none;color:var(--neg);font:inherit;font-size:16px;font-weight:600;padding:8px 16px;cursor:pointer}
 .del-btn{border:0;background:none;color:var(--label-3);font:inherit;font-size:14px;padding:6px 16px;cursor:pointer}
@@ -2720,8 +2737,8 @@ const TABS = [['lancar',t('Lançar')],['historico',t('Histórico')],['resumo',t(
   renderMe();
   $('#brandIcon').innerHTML = '<span class="brand-ic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="40" height="40" aria-hidden="true"><defs><linearGradient id="pf-dk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1D2433"/><stop offset="1" stop-color="#04060A"/></linearGradient><linearGradient id="pf-gl" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#12B563"/><stop offset="1" stop-color="#74F7AE"/></linearGradient><linearGradient id="pf-wh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E4E8EE"/></linearGradient><radialGradient id="pf-gw" cx=".72" cy=".28" r=".55"><stop offset="0" stop-color="#2FD889" stop-opacity=".22"/><stop offset="1" stop-color="#2FD889" stop-opacity="0"/></radialGradient><radialGradient id="pf-sh" cx=".22" cy=".05" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><rect width="1024" height="1024" fill="url(#pf-dk)"/><rect width="1024" height="1024" fill="url(#pf-gw)"/><rect width="1024" height="1024" fill="url(#pf-sh)"/><g transform="translate(-34 0)"><path d="M300 262A30 30 0 0 1 330 232H517.00A24 24 0 0 1 541.00 256.00V396.79A70.21 70.21 0 0 0 611.21 467.00H749.62A22 22 0 0 1 771.12 493.65A216 216 0 0 1 560 664H448V718A74 74 0 0 1 300 718Z" fill="url(#pf-wh)"/><path d="M581.21 396.79V234.04A22 22 0 0 1 605.71 212.18A216 216 0 0 1 795.82 402.29A22 22 0 0 1 773.96 426.79H611.21A30 30 0 0 1 581.21 396.79Z" fill="url(#pf-gl)"/></g></svg></span>';
 })();
-const PAGES = { conta:t('Meu perfil'), ajustes:t('Ajustes') };
-const ALLP = TABS.concat([['conta',t('Meu perfil')]]);
+const PAGES = { conta:t('Ajustes'), ajustes:t('Ajustes') };
+const ALLP = TABS.concat([['conta',t('Ajustes')]]);
 function go(tab, fromHistory){
   const prev = V.tab; V.tab = tab;
   menuClose();
@@ -2742,9 +2759,9 @@ function go(tab, fromHistory){
   bar.classList.toggle('no-sel', ti < 0);
   if(ti > -1) bar.style.setProperty('--ti', ti);
   placeSideSel();
-  const name = tabName(tab);
+  const name = tab === 'ajustes' ? (SECOES[V.sec] || tabName(tab)) : tabName(tab);
   $('#largeTitle').textContent = name; $('#nbTitle').textContent = name;
-  const me = $('#meBtn'); if(me) me.hidden = tab === 'conta';
+  const me = $('#meBtn'); if(me) me.hidden = tab === 'conta' || tab === 'ajustes';
   const eye = $('#eyeBtn'); if(eye) eye.hidden = !!PAGES[tab];   // o olho aparece nas quatro abas, menos em Meu perfil e Ajustes
   setHeadSub();
   if(tab !== 'lancar'){ const bp = $('#bpill'); if(bp) bp.hidden = true; }
@@ -2943,7 +2960,7 @@ function openCatPicker(type, cur, onPick){
   $('#pkQ', pp).addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ const f = $$('.pk', pp).filter(function(r){ return !r.hidden; })[0]; if(f){ ev.preventDefault(); f.click(); } } });
   pp.addEventListener('click', function(ev){
     const r = ev.target.closest('[data-pk]'); if(r){ closePop(); onPick(r.getAttribute('data-pk')); return; }
-    if(ev.target.closest('[data-pkedit]')){ closePop(); if($('#sheetWrap').classList.contains('on')) closeSheet(); go('ajustes'); setTimeout(function(){ openList(type === 'out' ? 'cat-out' : 'cat-in'); }, 150); }
+    if(ev.target.closest('[data-pkedit]')){ closePop(); if($('#sheetWrap').classList.contains('on')) closeSheet(); V.sec = 'financas'; go('ajustes'); setTimeout(function(){ openList(type === 'out' ? 'cat-out' : 'cat-in'); }, 150); }
   });
 }
 const MET_G = { 'Pix':'pix', 'Débito':'card', 'Crédito':'card', 'Dinheiro':'cash', 'Boleto':'barcode', 'Transferência':'transfer', 'Debit':'card', 'Credit':'card', 'Cash':'cash', 'Check':'barcode', 'Transfer':'transfer' };
@@ -3031,7 +3048,7 @@ function fmEnsure(){
     const dm = ev.target.closest('[data-dm]');
     if(dm){ FM.ym = ymAdd(FM.ym || ymOf(d.get()), +dm.getAttribute('data-dm')); FM.el.innerHTML = fmHTML(); fmPlace(); return; }
     const ec = ev.target.closest('[data-edit-cats]');
-    if(ec){ const t = ec.getAttribute('data-edit-cats'); menuClose(); if($('#sheetWrap').classList.contains('on')) closeSheet(); go('ajustes'); setTimeout(function(){ openList(t === 'out' ? 'cat-out' : 'cat-in'); }, 150); }
+    if(ec){ const t = ec.getAttribute('data-edit-cats'); menuClose(); if($('#sheetWrap').classList.contains('on')) closeSheet(); V.sec = 'financas'; go('ajustes'); setTimeout(function(){ openList(t === 'out' ? 'cat-out' : 'cat-in'); }, 150); }
   });
   FM.el.addEventListener('input', function(ev){
     if(!ev.target.matches || !ev.target.matches('[data-dq]')) return;
@@ -4690,7 +4707,7 @@ function abrirEscolha(campo){
   const html = '<div class="group">'+cfg[1].map(function(o){ const on = atual === o[0];
     return '<button type="button" class="cell esc-row'+(on ? ' on' : '')+'" data-esc="'+o[0]+'"><div class="grow"><div class="t">'+o[1]+'</div>'+(o[2] ? '<div class="s">'+o[2]+'</div>' : '')+'</div>'+(on ? '<span class="esc-ck">'+ic('check',18,2.6)+'</span>' : '')+'</button>'; }).join('')+
     '</div>'+(cfg[2] ? '<div class="sec-f">'+cfg[2]+' '+t('Só você vê.')+'</div>' : '');
-  const sh = openSheet({ title:cfg[0], small:true, html:html, onClose:function(){ if(V.tab === 'conta') renderConta(); else if(V.tab === 'ajustes') renderAjustes(); } });
+  const sh = openSheet({ title:cfg[0], small:true, html:html, onClose:function(){ renderPerfilAtual(); } });
   sh.addEventListener('click', function(ev){ const b = ev.target.closest('[data-esc]'); if(!b) return; const p = {}; p[campo] = b.getAttribute('data-esc'); sobreGravar(p); haptic(6); closeSheet(); });
 }
 
@@ -5352,7 +5369,7 @@ function abrirTrava(trocar){
     if(pin !== pin1){ setTimeout(function(){ erro = t('Os códigos não bateram. Comece de novo.'); etapa = 1; pin1 = ''; pin = ''; draw(); haptic(12); }, 160); return; }
     await lockDefinir(pin);
     closeSheet(); haptic(10); island(trocar ? t('Código trocado') : t('App travado com código'));
-    if(V.tab === 'conta') renderConta();
+    renderPerfilAtual();
     if(!trocar && !(lockCfg() || {}).bio && await bioDisponivel()) setTimeout(perguntarBio, 500);
   });
 }
@@ -5367,7 +5384,7 @@ function perguntarBio(){
     try{
       const id = await bioRegistrar();
       const c = lockCfg() || {}; c.bio = true; c.credId = id; lockSalvar(c);
-      closePop(); island(t('Face ID ativado')); if(V.tab === 'conta') renderConta();
+      closePop(); island(t('Face ID ativado')); renderPerfilAtual();
     }catch(e){ closePop(); island(t('Não deu para ativar agora'), null, true); }
   });
 }
@@ -5383,9 +5400,9 @@ function abrirTravaLigada(c){
     '<button type="button" class="btn full danger" data-lk-off style="margin-top:10px">'+t('Desligar a trava')+'</button>' });
   sh.addEventListener('click', async function(ev){
     if(ev.target.closest('[data-lk-trocar]')){ closeSheet(); setTimeout(function(){ abrirTrava(true); }, 300); return; }
-    if(ev.target.closest('[data-lk-bio-off]')){ const cc = lockCfg() || {}; cc.bio = false; delete cc.credId; lockSalvar(cc); closeSheet(); island(t('Face ID desligado')); if(V.tab === 'conta') renderConta(); return; }
+    if(ev.target.closest('[data-lk-bio-off]')){ const cc = lockCfg() || {}; cc.bio = false; delete cc.credId; lockSalvar(cc); closeSheet(); island(t('Face ID desligado')); renderPerfilAtual(); return; }
     if(ev.target.closest('[data-lk-bio-on]')){ closeSheet(); setTimeout(perguntarBio, 300); return; }
-    if(ev.target.closest('[data-lk-off]')){ lockDesligar(); closeSheet(); island(t('Trava desligada')); if(V.tab === 'conta') renderConta(); return; }
+    if(ev.target.closest('[data-lk-off]')){ lockDesligar(); closeSheet(); island(t('Trava desligada')); renderPerfilAtual(); return; }
   });
 }
 /* ---------- trava sozinha ao voltar para o app ---------- */
@@ -5458,7 +5475,7 @@ function abrirLembretes(){
                    : '<div class="cell"><span class="t grow">'+t('Nada pendente por enquanto')+'</span></div>')+
     '</div>'+
     (pend.length ? '<button type="button" class="btn full soft" data-lb-testar style="margin-top:14px">'+t('Ver como fica o aviso')+'</button>' : '');
-  const sh = openSheet({ title:t('Lembretes'), html:h, onClose:function(){ if(V.tab === 'conta') renderConta(); } });
+  const sh = openSheet({ title:t('Lembretes'), html:h, onClose:function(){ renderPerfilAtual(); } });
   sh.addEventListener('change', async function(ev){
     const c2 = lembCfg();
     if(ev.target.id === 'lbOn'){
@@ -6125,32 +6142,67 @@ function lgRegiaoLigar(){
 function setRow(icon, color, label, input){ return '<label class="cell icon-row">'+sq(color, icon, '', 17)+'<span class="t grow">'+label+'</span>'+input+'</label>'; }
 function numIn(key, val, money_, w, ph, pre, suf){ return '<span class="unitwrap">'+(pre ? '<span class="unit">'+pre+'</span>' : '')+'<input class="inl" data-biz="'+key+'"'+(money_?' data-money':'')+' type="text" inputmode="decimal" value="'+val+'" placeholder="'+(ph||'')+'" style="width:'+(w||112)+'px;min-width:0">'+(suf ? '<span class="unit">'+suf+'</span>' : '')+'</span>'; }
 function navRow(icon, color, label, value, act){ return '<button type="button" class="cell icon-row" data-set="'+act+'">'+sq(color, icon, '', 17)+'<span class="t grow">'+label+'</span><span class="v">'+value+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'; }
+/* Ajustes: uma tela principal (Meu perfil) que leva para subtelas por assunto, como nos Ajustes do iPhone */
+const SECOES = { perfil:t('Perfil e segurança'), aparencia:t('Aparência'), regiao:t('Região e idioma'), financas:t('Categorias e pagamentos'), dados:t('Backup e dados') };
+function abrirSecao(sec){
+  V.sec = sec;
+  if(V.tab === 'ajustes'){ renderAjustes(); const n = SECOES[sec] || t('Ajustes'); $('#largeTitle').textContent = n; $('#nbTitle').textContent = n; window.scrollTo(0, 0); }
+  else go('ajustes');
+}
+function renderPerfilAtual(){ if(V.tab === 'conta') renderConta(); else if(V.tab === 'ajustes') renderAjustes(); }
+function grupo(titulo, linhas, nota){ return (titulo ? '<div class="sec-h">'+titulo+'</div>' : '')+'<div class="group">'+linhas+'</div>'+(nota ? '<div class="sec-f">'+nota+'</div>' : ''); }
+function linhaSw(id, icon, label, on){ return '<div class="cell icon-row">'+sq('', icon, '', 17)+'<span class="t grow">'+label+'</span><label class="switch"><input type="checkbox" id="'+id+'"'+(on ? ' checked' : '')+' aria-label="'+esc(label)+'"><span></span></label></div>'; }
 function renderAjustes(){
+  const sec = V.sec || 'dados', p = perfil(), sb = sobre(), jt = jeito();
   let h = '';
-  const trashN = all().filter(function(e){ return e.del; }).length;
-  h += '<div class="sec-h" style="margin-top:6px">'+t('Região e idioma')+'</div><div class="group">'+linhasRegiao()+'</div>';
-  h += '<div class="sec-h">'+t('Aparência')+'</div><div class="group">'+navRow('tema','#5856D6',t('Tema'), rotulo(TEMAS, sobre().tema), 'tema')+'</div>';
-  h += '<div class="sec-h">'+t('Listas')+'</div><div class="group">';
-  h += navRow('list','#007AFF',t('Categorias de saída'), S.config.cats.out.length, 'cat-out');
-  h += navRow('list','#34C759',t('Categorias de entrada'), S.config.cats.in.length, 'cat-in');
-  h += navRow('card','#5856D6',t('Formas de pagamento'), S.config.mets.length, 'mets');
-  h += navRow('trash','#8E8E93',t('Excluídos recentemente'), trashN || '', 'trash');
-  h += '</div>';
-  h += '<div class="sec-h">'+t('Saldo')+'</div><div class="group">'+
-    navRow('bank','#30B0C7',t('Saldo em conta'), saldoConf() ? money0(saldoHoje()) : t('Informar'), 'saldo')+'</div>'+
-    '<div class="sec-f">'+t('Informe quanto você tem na conta. O app acompanha daqui pra frente e avisa quando não bater.')+'</div>';
-
-  h += '<div class="sec-h">'+t('Dados')+'</div><div class="group">';
-  h += '<div class="cell icon-row">'+sq('#007AFF','cloud','',17)+'<span class="t grow">'+t('Armazenamento')+'</span><span class="v">'+(mode === 'cloud' ? t('Nuvem') : t('Este aparelho'))+'</span></div>';
-  h += '<button type="button" class="cell icon-row action" data-dt="json">'+sq('#34C759','down','',17)+'<span class="t grow" style="color:var(--tint)">'+t('Baixar backup')+'</span></button>';
-  h += '<button type="button" class="cell icon-row action" data-dt="csv">'+sq('#30B0C7','table','',17)+'<span class="t grow" style="color:var(--tint)">'+t('Planilha do ano')+'</span><span class="v">CSV</span></button>';
-  h += '<button type="button" class="cell icon-row action" data-dt="restore">'+sq('#FF9500','restore','',17)+'<span class="t grow" style="color:var(--tint)">'+t('Restaurar backup')+'</span></button>';
-  const nL = live(all()).length;
-  h += '</div><div class="sec-f">'+tn(nL, '{n} lançamento. Último backup: {d}.', '{n} lançamentos. Último backup: {d}.', {d:(S.config.lastBackup ? fmtFull(S.config.lastBackup.slice(0,10)) : t('nunca'))})+'</div>';
-  h += '<div class="sec-h">'+t('Recomeçar')+'</div><div class="group">'+
-    '<button type="button" class="cell destructive" data-dt="limpar">'+t('Apagar todos os lançamentos')+'</button>'+
-    '<button type="button" class="cell destructive" data-dt="wipe">'+t('Apagar todos os dados')+'</button></div>'+
-    '<div class="sec-f">'+t('Apagar os lançamentos zera o histórico e mantém categorias, limites, contas fixas, cartões e metas. Apagar todos os dados leva tudo.')+'</div>';
+  if(sec === 'perfil'){
+    h += '<div class="pf-top">'+'<button type="button" class="pf-av" data-foto aria-label="'+esc(t('Foto de perfil'))+'">'+avatarHTML(88)+'<span class="pf-cam">'+glyph('camera', 15)+'</span></button>'+
+      (p.nome ? '<b class="pf-nome">'+esc(p.nome)+'</b>' : '<button type="button" class="me-add" data-apelido>'+t('Adicionar nome')+'</button>')+
+      (p.conta ? '<small class="pf-mail">'+esc(p.email)+'</small>' : '')+'</div>';
+    h += grupo(t('Seus dados'),
+      linhaConta('data-apelido', 'person', '', t('Nome'), p.nome || t('Adicionar'))+
+      linhaConta('data-foto', 'camera', '', t('Foto de perfil'), p.foto ? t('Alterar') : t('Adicionar'))+
+      linhaConta('data-sobre="idade"', 'calendar', '', t('Idade'), rotulo(IDADES, sb.idade) || t('Escolher'))+
+      linhaConta('data-sobre="genero"', 'person', '', t('Gênero'), rotulo(GENEROS, sb.genero) || t('Escolher'))+
+      linhaConta('data-sobre="exp"', 'spark', '', t('Finanças'), rotulo(EXPS, sb.exp) || t('Escolher')),
+      t('Serve para o app se ajustar a você. Só você vê.'));
+    h += grupo(t('Login e segurança'),
+      linhaConta('data-email', 'mail', '', t('E-mail'), p.conta ? p.email : t('Mudar'), ' acct')+
+      (p.conta ? (p.verificado ? '<div class="cell icon-row">'+sq('var(--pos)', 'shieldck', 'sem', 17)+'<span class="t grow">'+t('Verificação do e-mail')+'</span><span class="v">'+t('Verificado')+'</span></div>'
+        : linhaConta('data-verificar', 'shieldck', '', t('Verificar e-mail'), t('Aguardando'), ' warn')) : '')+
+      linhaConta('data-senha', 'lock', '', t('Senha'), t('Mudar'))+
+      linhaConta('data-trava', 'lock', '', t('Travar o app'), lockLigado() ? (lockCfg() && lockCfg().bio ? t('Código e Face ID') : t('Código')) : t('Desligado')),
+      p.conta && !p.verificado ? t('Procure o link de confirmação no spam, no lixo eletrônico ou em promoções. Toque em Verificar e-mail para reenviar.') : t('Para mudar o e-mail ou a senha, enviamos um link de confirmação para você.'));
+    if(p.conta) h += '<div class="group pf-sair"><button type="button" class="cell destructive" data-signout>'+t('Sair da conta')+'</button><button type="button" class="cell destructive" data-excluir>'+t('Excluir conta')+'</button></div>'+
+      '<div class="sec-f">'+t('Excluir a conta apaga todos os seus dados da nuvem de forma definitiva.')+'</div>';
+  } else if(sec === 'aparencia'){
+    let gv = .45; try{ const s2 = localStorage.getItem(GLASS_KEY); if(s2 !== null) gv = +s2; }catch(e){}
+    h += grupo('', linhaConta('data-sobre="tema"', 'tema', '', t('Tema'), rotulo(TEMAS, sb.tema))+
+      linhaConta('data-vidro', 'moon', '', t('Vidro'), glassLabel(gv)), '');
+    h += grupo(t('Leitura'), linhaConta('data-sobre="texto"', 'text', '', t('Tamanho do texto'), sb.texto === 'auto' ? t('Automático') : (jt.texto === 'grande' ? t('Grande') : t('Normal')))+
+      linhaConta('data-sobre="modo"', 'grid', '', t('Visual'), sb.modo === 'auto' ? t('Automático') : (jt.modo === 'essencial' ? t('Essencial') : t('Completo')))+
+      linhaSw('dicasSw', 'spark', t('Dicas nas telas'), jt.dicas),
+      t('Essencial mostra menos números por tela. Completo mostra tudo, com gráficos e comparações.'));
+  } else if(sec === 'regiao'){
+    h += grupo('', linhasRegiao(), t('A moeda muda só o símbolo e o formato: os valores já lançados não são convertidos.'));
+  } else if(sec === 'financas'){
+    h += grupo(t('Categorias'), navRow('list','#007AFF',t('Categorias de saída'), S.config.cats.out.length, 'cat-out')+
+      navRow('list','#34C759',t('Categorias de entrada'), S.config.cats.in.length, 'cat-in'), '');
+    h += grupo(t('Pagamentos'), navRow('card','#5856D6',t('Formas de pagamento'), S.config.mets.length, 'mets')+
+      navRow('bank','#30B0C7',t('Saldo em conta'), saldoConf() ? money0(saldoHoje()) : t('Informar'), 'saldo'),
+      t('Informe quanto você tem na conta. O app acompanha daqui pra frente e avisa quando não bater.'));
+  } else {
+    const trashN = all().filter(function(e){ return e.del; }).length, nL = live(all()).length;
+    h += grupo('', '<div class="cell icon-row">'+sq('#007AFF','cloud','',17)+'<span class="t grow">'+t('Armazenamento')+'</span><span class="v">'+(mode === 'cloud' ? t('Nuvem') : t('Este aparelho'))+'</span></div>'+
+      navRow('trash','#8E8E93',t('Excluídos recentemente'), trashN || '', 'trash'), '');
+    h += grupo(t('Backup'), '<button type="button" class="cell icon-row action" data-dt="json">'+sq('#34C759','down','',17)+'<span class="t grow" style="color:var(--tint)">'+t('Baixar backup')+'</span></button>'+
+      '<button type="button" class="cell icon-row action" data-dt="csv">'+sq('#30B0C7','table','',17)+'<span class="t grow" style="color:var(--tint)">'+t('Planilha do ano')+'</span><span class="v">CSV</span></button>'+
+      '<button type="button" class="cell icon-row action" data-dt="restore">'+sq('#FF9500','restore','',17)+'<span class="t grow" style="color:var(--tint)">'+t('Restaurar backup')+'</span></button>',
+      tn(nL, '{n} lançamento. Último backup: {d}.', '{n} lançamentos. Último backup: {d}.', {d:(S.config.lastBackup ? fmtFull(S.config.lastBackup.slice(0,10)) : t('nunca'))}));
+    h += grupo(t('Recomeçar'), '<button type="button" class="cell destructive" data-dt="limpar">'+t('Apagar todos os lançamentos')+'</button>'+
+      '<button type="button" class="cell destructive" data-dt="wipe">'+t('Apagar todos os dados')+'</button>',
+      t('Apagar os lançamentos zera o histórico e mantém categorias, limites, contas fixas, cartões e metas. Apagar todos os dados leva tudo.'));
+  }
   $('#settings').innerHTML = h;
 }
 function glassLabel(v){ return v < .25 ? t('Claro@@vidro') : (v > .7 ? t('Tingido') : t('Equilibrado')); }
@@ -6163,6 +6215,7 @@ $('#settings').addEventListener('change', function(ev){
   if(ev.target.id === 'privSw'){ setPrivate(ev.target.checked, true); return; }
 });
 $('#settings').addEventListener('click', function(ev){
+  if(acaoPerfil(ev)) return;
   const s = ev.target.closest('[data-set]');
   if(s && s.getAttribute('data-set') === 'saldo'){ abrirSaldo(); return; }
   if(s && s.getAttribute('data-set') === 'tema'){ abrirEscolha('tema'); return; }
@@ -6443,8 +6496,7 @@ function onFbAuth(user){
     hideLogin();
     syncCloud().then(depoisDaNuvem, depoisDaNuvem);
     renderMe(); fotoCarregar(); sobreCarregar();
-    if(V.tab === 'ajustes') renderAjustes();
-    if(V.tab === 'conta') renderConta();
+    renderPerfilAtual();
   } else {
     cloudReset(); showLogin();
   }
@@ -6511,13 +6563,13 @@ async function fotoCarregar(){
   try{
     const s = await db.doc('perfil/foto').get(), d = s.exists ? (s.data() || {}) : {}, pl = perfilLocal(), nova = d.img || '';
     if(s.metadata && s.metadata.fromCache && !s.exists) return;   // sem resposta da nuvem: mantém a foto deste aparelho
-    if(nova !== (pl.foto || '')){ pl.foto = nova; perfilSalvar(pl); renderMe(); if(V.tab === 'conta') renderConta(); }
+    if(nova !== (pl.foto || '')){ pl.foto = nova; perfilSalvar(pl); renderMe(); renderPerfilAtual(); }
   }catch(e){}
 }
 async function fotoGravar(img){
   const pl = perfilLocal(); pl.foto = img || '';
   if(!perfilSalvar(pl)) throw new Error('espaço');
-  renderMe(); if(V.tab === 'conta') renderConta();
+  renderMe(); renderPerfilAtual();
   document.dispatchEvent(new Event('fotoatualizada'));
   const db = contaUser() && window.__FB.db();
   if(db){ if(img) await db.doc('perfil/foto').set({ img: img, atualizadoEm: new Date().toISOString() }); else await db.doc('perfil/foto').delete(); }
@@ -6526,44 +6578,25 @@ function linhaConta(attr, icon, cor, label, valor, extra){
   return '<button type="button" class="cell icon-row" '+attr+'>'+sq(cor, icon, '', 17)+'<span class="t grow">'+label+'</span><span class="v'+(extra||'')+'">'+esc(valor)+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>';
 }
 function renderConta(){
-  const p = perfil();
-  let gv = .45; try{ const s = localStorage.getItem(GLASS_KEY); if(s !== null) gv = +s; }catch(e){}
-  let h = '<div class="card prof">'+avatarHTML(64)+'<div class="pf-t">'+
-    (p.nome ? '<b class="me-name">'+esc(p.nome)+'</b>' : '<button type="button" class="me-add" data-apelido>'+t('Adicionar nome')+'</button>')+
-    (p.conta ? '<small class="me-mail">'+esc(p.email)+'</small>'+(p.verificado ? '<span class="me-ok">'+glyph('shieldck', 13)+t('E-mail verificado')+'</span>' : '<button type="button" class="me-warn" data-verificar>'+t('Verificar e-mail')+'</button>') : '')+
-  '</div></div>';
-  h += '<div class="sec-h">'+t('Teste do Precize')+'</div><div class="group">'+linhaConta('data-opiniao', 'mega', '', t('Dar minha opinião'), '')+
-    (instalado() ? '' : linhaConta('data-instalar', 'down', '', t('Instalar na tela de início'), ''))+'</div>'+
-    '<div class="sec-f">'+t('Conta o que achou, o que atrapalhou e o que faltou. Vai direto para quem está criando o app.')+'</div>';
-  h += '<div class="sec-h">'+t('Perfil')+'</div><div class="group">'+
-    linhaConta('data-apelido', 'person', '', t('Nome'), p.nome || t('Adicionar'))+
-    linhaConta('data-foto', 'camera', '', t('Foto de perfil'), p.foto ? t('Alterar') : t('Adicionar'))+'</div>';
-  const sb = sobre(), jt = jeito();
-  h += '<div class="sec-h">'+t('Sobre você')+'</div><div class="group">'+
-    linhaConta('data-sobre="idade"', 'calendar', '', t('Idade'), rotulo(IDADES, sb.idade) || t('Escolher'))+
-    linhaConta('data-sobre="genero"', 'person', '', t('Gênero'), rotulo(GENEROS, sb.genero) || t('Escolher'))+
-    linhaConta('data-sobre="exp"', 'spark', '', t('Finanças'), rotulo(EXPS, sb.exp) || t('Escolher'))+
-    '</div><div class="sec-f">'+t('Serve para o app se ajustar a você. Só você vê.')+'</div>';
-  h += '<div class="sec-h">'+t('Login e segurança')+'</div><div class="group">'+
-    linhaConta('data-email', 'mail', '', t('E-mail'), p.conta ? p.email : t('Mudar'), ' acct')+
-    linhaConta('data-senha', 'lock', '', t('Senha'), t('Mudar'))+
-    (p.conta ? '<div class="cell icon-row">'+sq(p.verificado ? 'var(--pos)' : 'var(--warn)', 'shieldck', 'sem', 17)+'<span class="t grow">'+t('Verificação do e-mail')+'</span><span class="v">'+(p.verificado ? t('Verificado') : t('Aguardando'))+'</span></div>' : '')+
-    '</div>'+
-    (p.conta && !p.verificado
-      ? '<div class="sec-f aviso-mail">'+glyph('mail', 14)+'<span>'+t('Aguardando a confirmação do e-mail. O link já foi enviado para {email} e chega como {rem}, então <b>procure no spam, no lixo eletrônico ou em promoções</b>. Toque em Verificar e-mail para reenviar.', {email:'<b>'+esc(p.email)+'</b>', rem:'<b>'+esc(remetente())+'</b>'})+'</span></div>'
-      : '<div class="sec-f">'+t('Para mudar o e-mail ou a senha, enviamos um link de confirmação para você.')+'</div>');
-  h += '<div class="sec-h">'+t('Preferências')+'</div><div class="group">'+
-    '<div class="cell icon-row">'+sq('', 'eye', '', 17)+'<span class="t grow">'+t('Modo discreto')+'</span><label class="switch"><input type="checkbox" id="privSw"'+(document.body.classList.contains('private') ? ' checked' : '')+' aria-label="'+t('Modo discreto')+'"><span></span></label></div>'+
-    linhaConta('data-sobre="tema"', 'tema', '', t('Tema'), rotulo(TEMAS, sb.tema))+
-    linhaConta('data-vidro', 'moon', '', t('Vidro'), glassLabel(gv))+
-    linhaConta('data-sobre="modo"', 'grid', '', t('Visual'), sb.modo === 'auto' ? t('Automático') : (jt.modo === 'essencial' ? t('Essencial') : t('Completo')))+
-    linhaConta('data-lembretes', 'bell', '', t('Lembretes'), lembCfg().on ? t('Ligados') : t('Desligados'))+
+  const p = perfil(), sb = sobre(), r = regiaoAtual();
+  const trashN = all().filter(function(e){ return e.del; }).length;
+  let h = '<button type="button" class="card hub-me" data-sec="perfil">'+avatarHTML(58)+'<span class="hub-t">'+
+    '<b>'+esc(p.nome || t('Seu perfil'))+'</b><small>'+esc(p.conta ? p.email : t('Nome, foto e dados'))+'</small>'+
+    (p.conta && !p.verificado ? '<span class="hub-warn">'+t('Verifique seu e-mail')+'</span>' : '<span class="hub-sub">'+t('Perfil, login e segurança')+'</span>')+
+    '</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>';
+  h += grupo('', linhaSw('privSw', 'eye', t('Modo discreto'), document.body.classList.contains('private'))+
     linhaConta('data-trava', 'lock', '', t('Travar o app'), lockLigado() ? (lockCfg() && lockCfg().bio ? t('Código e Face ID') : t('Código')) : t('Desligado'))+
-    linhaConta('data-sobre="texto"', 'text', '', t('Tamanho do texto'), sb.texto === 'auto' ? t('Automático') : (jt.texto === 'grande' ? t('Grande') : t('Normal')))+
-    '<div class="cell icon-row">'+sq('', 'spark', '', 17)+'<span class="t grow">'+t('Dicas nas telas')+'</span><label class="switch"><input type="checkbox" id="dicasSw"'+(jt.dicas ? ' checked' : '')+' aria-label="'+t('Dicas nas telas')+'"><span></span></label></div>'+
-    '</div><div class="sec-f">'+t('O modo discreto esconde os valores em todo o app. Ele também liga pelo olho no topo das abas.')+'</div>';
-  h += '<div class="sec-h">'+t('Ajustes')+'</div><div class="group">'+linhaConta('data-go-ajustes', 'gear', '', t('Ajustes do app'), t('Listas e backup'))+'</div>';
-  if(p.conta) h += '<div class="out-acts"><button type="button" class="out-btn" data-signout>'+t('Sair da conta')+'</button><button type="button" class="del-btn" data-excluir>'+t('Excluir conta')+'</button></div>';
+    linhaConta('data-lembretes', 'bell', '', t('Lembretes'), lembCfg().on ? t('Ligados') : t('Desligados')),
+    t('O modo discreto esconde os valores em todo o app. Ele também liga pelo olho no topo das abas.'));
+  h += grupo(t('Geral'), linhaConta('data-sec="aparencia"', 'tema', '', t('Aparência'), rotulo(TEMAS, sb.tema))+
+    linhaConta('data-sec="regiao"', 'globe', '', t('Região e idioma'), IDIOMAS[r.idioma].nome.replace(/ \(.*\)$/, '')+' · '+r.moeda), '');
+  h += grupo(t('Finanças'), linhaConta('data-sec="financas"', 'list', '', t('Categorias e pagamentos'), '')+
+    linhaConta('data-set="saldo"', 'bank', '', t('Saldo em conta'), saldoConf() ? money0(saldoHoje()) : t('Informar'))+
+    linhaConta('data-sec="dados"', 'cloud', '', t('Backup e dados'), trashN ? tn(trashN, '{n} na lixeira', '{n} na lixeira') : ''), '');
+  h += grupo(t('Teste do Precize'), linhaConta('data-opiniao', 'mega', '', t('Dar minha opinião'), '')+
+    (instalado() ? '' : linhaConta('data-instalar', 'down', '', t('Instalar na tela de início'), '')),
+    t('Conta o que achou, o que atrapalhou e o que faltou. Vai direto para quem está criando o app.'));
+  if(p.conta) h += '<div class="group"><button type="button" class="cell destructive hub-sair" data-signout>'+t('Sair da conta')+'</button></div>';
   h += '<div class="me-foot">Precize<br>'+t('Versão {v} · teste', {v:'2026.10'})+'</div>';
   $('#conta').innerHTML = h;
 }
@@ -6573,7 +6606,7 @@ function abrirVidro(){
     '<div style="display:flex;justify-content:space-between;align-items:center"><span class="t">'+t('Intensidade')+'</span><span class="v" id="gLab">'+glassLabel(gv)+'</span></div>'+
     gsl('gGlass', 0, 1, 0.05, gv, 'aria-label="'+t('Intensidade do vidro')+'"')+
     '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--label-2);margin-top:-4px"><span>'+t('Claro@@vidro')+'</span><span>'+t('Tingido')+'</span></div></div></div>'+
-    '<div class="sec-f">'+t('Mais claro deixa os cartões transparentes. Mais tingido deixa tudo mais sólido e fácil de ler.')+'</div>', onClose:function(){ if(V.tab === 'conta') renderConta(); } });
+    '<div class="sec-f">'+t('Mais claro deixa os cartões transparentes. Mais tingido deixa tudo mais sólido e fácil de ler.')+'</div>', onClose:function(){ renderPerfilAtual(); } });
   gslPaint($('#gGlass', sh));
   sh.addEventListener('input', function(ev){ if(ev.target.id !== 'gGlass') return; const v = ev.target.value; applyGlass(v); $('#gLab', sh).textContent = glassLabel(+v); });
   sh.addEventListener('change', function(ev){ if(ev.target.id === 'gGlass'){ try{ localStorage.setItem(GLASS_KEY, ev.target.value); }catch(e){} } });
@@ -6590,7 +6623,7 @@ async function salvarNome(n){
   n = String(n || '').trim().replace(/\s+/g, ' ');
   if(contaUser()) await window.__FB.updateName(n);
   else { const pl = perfilLocal(); pl.nome = n; perfilSalvar(pl); }
-  renderMe(); if(V.tab === 'conta') renderConta();
+  renderMe(); renderPerfilAtual();
   return n;
 }
 function abrirApelido(){
@@ -6648,7 +6681,7 @@ function remetente(){ const c = window.FIREBASE_CONFIG || {}; return c.authDomai
 function enviarVerificacao(){ abrirVerificacao(); }
 function abrirVerificacao(){
   const p = perfil(); let timer = null;
-  const sh = openSheet({ title:t('Confirmar e-mail'), small:true, onClose:function(){ clearInterval(timer); if(V.tab === 'conta') renderConta(); }, html:
+  const sh = openSheet({ title:t('Confirmar e-mail'), small:true, onClose:function(){ clearInterval(timer); renderPerfilAtual(); }, html:
     '<div class="sh-ic">'+sq('var(--warn)','mail','xl sem',26)+'</div>'+
     '<p class="sh-p" style="text-align:center">'+t('Enviamos um link para {email}. Abra o e-mail e toque no link para confirmar a sua conta.', {email:'<b>'+esc(p.email)+'</b>'})+'</p>'+
     '<div class="group vf-dica"><div class="cell"><div class="grow"><div class="t">'+t('Não chegou?')+'</div><div class="s">'+t('Procure no <b>spam</b>, no <b>lixo eletrônico</b> ou em <b>promoções</b>. O e-mail vem de {rem} e pode levar alguns minutos.', {rem:esc(remetente())})+'</div></div></div></div>'+
@@ -6798,13 +6831,16 @@ function abrirRecorte(file){
   };
   img.src = url;
 }
-$('#conta').addEventListener('click', function(ev){
-  if(ev.target.closest('[data-trava]')){ abrirTrava(); return; }
-  if(ev.target.closest('[data-opiniao]')){ abrirOpiniao(); return; }
-  if(ev.target.closest('[data-instalar]')){ abrirInstalar(); return; }
-  if(ev.target.closest('[data-lembretes]')){ abrirLembretes(); return; }
-  const sbx = ev.target.closest('[data-sobre]'); if(sbx){ abrirEscolha(sbx.getAttribute('data-sobre')); return; }
-  const t = ev.target.closest('[data-apelido],[data-foto],[data-email],[data-senha],[data-verificar],[data-excluir],[data-go-ajustes],[data-vidro]'); if(!t) return;
+/* toques da tela principal e das subtelas dos Ajustes (devolve true quando cuidou do toque) */
+function acaoPerfil(ev){
+  const sc = ev.target.closest('[data-sec]'); if(sc){ haptic(6); abrirSecao(sc.getAttribute('data-sec')); return true; }
+  if(ev.target.closest('[data-trava]')){ abrirTrava(); return true; }
+  if(ev.target.closest('[data-opiniao]')){ abrirOpiniao(); return true; }
+  if(ev.target.closest('[data-instalar]')){ abrirInstalar(); return true; }
+  if(ev.target.closest('[data-lembretes]')){ abrirLembretes(); return true; }
+  if(ev.target.closest('[data-set="saldo"]')){ abrirSaldo(); return true; }
+  const sbx = ev.target.closest('[data-sobre]'); if(sbx){ abrirEscolha(sbx.getAttribute('data-sobre')); return true; }
+  const t = ev.target.closest('[data-apelido],[data-foto],[data-email],[data-senha],[data-verificar],[data-excluir],[data-vidro]'); if(!t) return false;
   haptic(6);
   if(t.hasAttribute('data-apelido')) abrirApelido();
   else if(t.hasAttribute('data-foto')) abrirFotoMenu();
@@ -6812,19 +6848,25 @@ $('#conta').addEventListener('click', function(ev){
   else if(t.hasAttribute('data-senha')){ if(contaUser()) abrirSenha(); else soNoApp(tx('Mudar senha')); }
   else if(t.hasAttribute('data-verificar')) enviarVerificacao();
   else if(t.hasAttribute('data-excluir')) abrirExcluir();
-  else if(t.hasAttribute('data-go-ajustes')) go('ajustes');
   else if(t.hasAttribute('data-vidro')) abrirVidro();
-});
+  return true;
+}
+$('#conta').addEventListener('click', function(ev){ acaoPerfil(ev); });
+function mudancaPerfil(ev){
+  if(ev.target.id === 'gGlass'){ try{ localStorage.setItem(GLASS_KEY, ev.target.value); }catch(e){} }
+  if(ev.target.id === 'privSw') setPrivate(ev.target.checked, true);
+  if(ev.target.id === 'dicasSw'){ if(ev.target.checked){ try{ localStorage.removeItem(DICAS_KEY); }catch(e){} } sobreGravar({ dicas: ev.target.checked }); }
+}
+$('#conta').addEventListener('change', mudancaPerfil);
+$('#settings').addEventListener('change', function(ev){ if(ev.target.id === 'dicasSw') mudancaPerfil(ev); });
 $('#conta').addEventListener('input', function(ev){ if(ev.target.id !== 'gGlass') return; const v = ev.target.value; applyGlass(v); $('#gLab').textContent = glassLabel(+v); });
-$('#conta').addEventListener('change', function(ev){ if(ev.target.id === 'gGlass'){ try{ localStorage.setItem(GLASS_KEY, ev.target.value); }catch(e){} } if(ev.target.id === 'privSw') setPrivate(ev.target.checked, true);
-  if(ev.target.id === 'dicasSw'){ if(ev.target.checked){ try{ localStorage.removeItem(DICAS_KEY); }catch(e){} } sobreGravar({ dicas: ev.target.checked }); } });
 document.addEventListener('click', function(ev){ if(ev.target.closest('#meBtn,#sideMe')){ haptic(6); go('conta'); } });
 /* quando o app volta para a tela, atualiza e-mail e verificação (ex.: depois de tocar no link do e-mail) */
 let contaReload = 0;
 document.addEventListener('visibilitychange', async function(){
   if(document.visibilityState !== 'visible' || !contaUser() || !window.__FB.reload || Date.now() - contaReload < 5000) return;
   contaReload = Date.now();
-  try{ await window.__FB.reload(); renderMe(); if(V.tab === 'conta') renderConta(); }catch(e){}
+  try{ await window.__FB.reload(); renderMe(); renderPerfilAtual(); }catch(e){}
 });
 /* textos fixos do HTML (barra lateral, login, cabeçalhos): traduz uma vez ao abrir */
 function traduzirEstatico(){
@@ -6953,8 +6995,7 @@ function lancarFixaVariavel(f){
 function irParaRecomecar(){
   go('conta');
   setTimeout(function(){
-    const b = $('[data-go-ajustes]');
-    if(b) b.click();
+    abrirSecao('dados');
     setTimeout(function(){
       const alvo = $('#settings [data-dt="limpar"]');
       if(!alvo) return;
