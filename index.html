@@ -1526,6 +1526,10 @@ body.private .wb{opacity:.35}
 .cap.on,.cap-dd.on{background:color-mix(in srgb,var(--tint) 16%,transparent) !important;color:var(--tint) !important}
 .cap-clear{color:var(--tint) !important}
 #hCaps{margin-top:2px}
+.cap-f{display:inline-flex;align-items:center;gap:6px}.cap-f b{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--tint);color:#fff;font-size:11.5px}
+.cap-x{display:inline-flex;align-items:center;gap:6px}.cap-x span{font-size:16px;line-height:1;opacity:.7}
+.hhint:empty{display:none}
+
 .hcount{font-size:13px;color:var(--label-2);margin:10px 4px 0}
 .hmonth{display:flex;justify-content:space-between;align-items:baseline;margin:22px 4px 10px}
 .hmonth b{font-size:20px;font-weight:800;letter-spacing:-.02em}
@@ -2146,12 +2150,12 @@ body.private .fe-num,body.private .fe-io b,body.private .fe-linha b{filter:blur(
     <!-- LANÇAR -->
     <section class="panel on" id="p-lancar" aria-label="Lançar">
       <div class="dica-box" data-dica="lancar"></div>
-      <div id="avisoBox"></div>
       <div class="lanc">
         <div class="composer glass" id="composer"></div>
         <div class="lanc-list">
           <div class="sech l-mes"><b>Seu mês</b><span class="sech-n" id="lStripL"></span></div>
           <button type="button" class="strip l-strip" id="lStrip" data-seeall aria-label="Ver o histórico do mês"></button>
+          <div id="avisoBox"></div>
           <div id="lProx"></div>
           <div class="sech"><b>Últimos lançamentos</b><button type="button" class="sech-a" data-seeall>Ver tudo</button></div>
           <div id="list"></div>
@@ -2198,15 +2202,15 @@ body.private .fe-num,body.private .fe-io b,body.private .fe-linha b{filter:blur(
           <div id="rFech"></div>
           <div id="rAtt"></div>
           <div class="duo" id="rDuo"></div>
-          <div id="rFixo"></div>
-          <div id="rMes"></div>
         </div>
         <div class="rcol">
           <div class="sech" id="rSpendH"><b>Para onde foi o dinheiro</b><button type="button" class="sech-a" data-rsee>Ver lançamentos</button></div>
           <div id="rSpend"></div>
           <div id="rPag"></div>
+          <div id="rFixo"></div>
           <div id="rCal"></div>
           <div id="rTop"></div>
+          <div id="rMes"></div>
           <div id="rMetas"></div>
           <button type="button" class="btn full soft r-all" data-gohist>Ver todos os lançamentos</button>
         </div>
@@ -4091,12 +4095,14 @@ function renderHistorico(){
   $('#hNav').classList.toggle('off', V.h.mode === 'tudo');
   $('#hPer').classList.toggle('dim', b.has);
   $('#hqX').hidden = !$('#hq').value;
-  $('#hHint').textContent = b.has ? t('Buscando em todo o histórico') : t('Busque por nome, valor (45,90 ou acima de 100) ou data (12/09, setembro, 2026)');
+  $('#hHint').textContent = b.has ? t('Buscando em todo o histórico') : (document.activeElement === $('#hq') ? t('Busque por nome, valor (45,90 ou acima de 100) ou data (12/09, setembro, 2026)') : '');
   const filtrando = V.h.type !== 'tudo' || V.h.cat || V.h.met || b.has;
-  $('#hCaps').innerHTML = HCH.map(function(c){ return '<button type="button" class="cap" data-hf="'+c[0]+'" aria-pressed="'+(V.h.type===c[0])+'">'+c[1]+'</button>'; }).join('') +
-    '<button type="button" class="cap cap-dd'+(V.h.cat ? ' on' : '')+'" data-hcat aria-pressed="'+(!!V.h.cat)+'">'+(V.h.cat ? esc(V.h.cat) : t('Categoria'))+DD+'</button>'+
-    '<button type="button" class="cap cap-dd'+(V.h.met ? ' on' : '')+'" data-hmet aria-pressed="'+(!!V.h.met)+'">'+(V.h.met ? esc(V.h.met) : t('Forma'))+DD+'</button>'+
-    (filtrando ? '<button type="button" class="cap cap-clear" data-hclear>'+t('Limpar')+'</button>' : '');
+  const nF = (V.h.type !== 'tudo' ? 1 : 0) + (V.h.cat ? 1 : 0) + (V.h.met ? 1 : 0);
+  const pilula = function(k, txt){ return '<button type="button" class="cap on cap-x" data-hx="'+k+'">'+txt+'<span aria-hidden="true">×</span></button>'; };
+  $('#hCaps').innerHTML = '<button type="button" class="cap cap-f'+(nF ? ' on' : '')+'" data-hfiltros>'+glyph('sliders',15)+t('Filtros')+(nF ? ' <b>'+nF+'</b>' : '')+'</button>'+
+    (V.h.type !== 'tudo' ? pilula('type', HCH.filter(function(c){ return c[0] === V.h.type; })[0][1]) : '')+
+    (V.h.cat ? pilula('cat', esc(V.h.cat)) : '')+(V.h.met ? pilula('met', esc(V.h.met)) : '')+
+    (filtrando && nF > 1 ? '<button type="button" class="cap cap-clear" data-hclear>'+t('Limpar')+'</button>' : '');
   $('#hStrip').innerHTML = stripHTML(list);
   const pend = list.filter(function(e){ return e.st === 'pend'; }).length;
   $('#hCount').textContent = list.length ? tn(list.length, '{n} lançamento', '{n} lançamentos')+(pend ? ', '+tn(pend, '{n} pendente', '{n} pendentes') : '') : '';
@@ -4133,6 +4139,25 @@ function abrirHistorico(o){
   const q = $('#hq'); if(q) q.value = o.q || '';
   go('historico'); window.scrollTo(0, 0);
 }
+/* filtros do histórico numa folha: tipo, categoria e forma */
+function hCatsTodas(){ const cats = []; S.config.cats.out.concat(S.config.cats.in).forEach(function(c){ if(cats.indexOf(c) === -1) cats.push(c); }); live(all()).forEach(function(e){ if(cats.indexOf(e.cat) === -1) cats.push(e.cat); }); return cats; }
+function hMetsTodas(){ const mets = S.config.mets.slice(); live(all()).forEach(function(e){ if(e.met && mets.indexOf(e.met) === -1) mets.push(e.met); }); return mets; }
+function abrirFiltrosH(){
+  const corpo = function(){ return segHTML('hfTipo', HCH, V.h.type, 'hft')+
+    '<div class="group" style="margin-top:16px"><button type="button" class="cell drow" data-hfc><span class="t grow">'+t('Categoria')+'</span><span class="v">'+esc(V.h.cat || t('Todas'))+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+
+    '<button type="button" class="cell drow" data-hfm><span class="t grow">'+t('Forma de pagamento')+'</span><span class="v">'+esc(V.h.met || t('Todas'))+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button></div>'+
+    '<button type="button" class="btn full" data-hfok style="margin-top:18px">'+t('Ver resultados')+'</button>'+
+    '<button type="button" class="plain" data-hfclr style="display:block;margin:12px auto 0">'+t('Limpar filtros')+'</button>'; };
+  const sh = openSheet({ title:t('Filtros'), small:true, html:corpo() });
+  const atual = function(){ $('.sh-body', sh).innerHTML = corpo(); renderHistorico(); };
+  sh.addEventListener('click', function(ev){
+    const tb = ev.target.closest('#hfTipo button'); if(tb){ V.h.type = tb.getAttribute('data-hft'); segSet($('#hfTipo', sh), tb); renderHistorico(); return; }
+    if(ev.target.closest('[data-hfc]')){ hEscolher(t('Categoria'), hCatsTodas(), V.h.cat, function(v){ V.h.cat = v; atual(); }); return; }
+    if(ev.target.closest('[data-hfm]')){ hEscolher(t('Forma de pagamento'), hMetsTodas(), V.h.met, function(v){ V.h.met = v; atual(); }); return; }
+    if(ev.target.closest('[data-hfclr]')){ V.h.type = 'tudo'; V.h.cat = ''; V.h.met = ''; atual(); return; }
+    if(ev.target.closest('[data-hfok]')) closeSheet();
+  });
+}
 function hEscolher(titulo, itens, atual, onPick){
   const html = '<div class="hpick">'+['__todas'].concat(itens).map(function(c){ const on = c === '__todas' ? !atual : c === atual;
     return '<button type="button" class="cap'+(on ? ' on' : '')+'" data-hv="'+esc(c)+'" aria-pressed="'+on+'">'+(c === '__todas' ? t('Todas') : esc(c))+'</button>'; }).join('')+'</div>';
@@ -4145,6 +4170,8 @@ function hEscolher(titulo, itens, atual, onPick){
   $$('#hNav .ch[data-hp="-1"]').forEach(function(b){ b.innerHTML = ic('chevL',18,2.5); });
   $$('#hNav .ch[data-hp="1"]').forEach(function(b){ b.innerHTML = ic('chevR',18,2.5); });
   $('#hq').addEventListener('input', debounce(function(){ V.h.lim = 120; V.stagger = 1; renderHistorico(); }, 170));
+  $('#hq').addEventListener('focus', function(){ if(!$('#hq').value) $('#hHint').textContent = t('Busque por nome, valor (45,90 ou acima de 100) ou data (12/09, setembro, 2026)'); });
+  $('#hq').addEventListener('blur', function(){ if(!$('#hq').value) $('#hHint').textContent = ''; });
   $('#hqX').addEventListener('click', function(){ $('#hq').value = ''; renderHistorico(); $('#hq').focus(); });
   $('#hMode').addEventListener('click', function(ev){ const b = ev.target.closest('[data-hm]'); if(!b) return; V.h.mode = b.getAttribute('data-hm'); V.h.lim = 120; haptic(5); renderHistorico(); });
   $('#hNav').addEventListener('click', function(ev){
@@ -4162,6 +4189,8 @@ function hEscolher(titulo, itens, atual, onPick){
     if(ev.target.closest('[data-hmet]')){
       const mets = S.config.mets.slice(); live(all()).forEach(function(e){ if(e.met && mets.indexOf(e.met) === -1) mets.push(e.met); });
       hEscolher(t('Forma de pagamento'), mets, V.h.met, function(v){ V.h.met = v; renderHistorico(); }); return; }
+    if(ev.target.closest('[data-hfiltros]')){ abrirFiltrosH(); return; }
+    const hx = ev.target.closest('[data-hx]'); if(hx){ const k = hx.getAttribute('data-hx'); if(k === 'type') V.h.type = 'tudo'; else V.h[k] = ''; renderHistorico(); return; }
     if(ev.target.closest('[data-hclear]')){ V.h.type = 'tudo'; V.h.cat = ''; V.h.met = ''; $('#hq').value = ''; renderHistorico(); return; }
     if(ev.target.closest('[data-hmore]')){ V.h.lim += 120; renderHistorico(); return; }
     if(ev.target.closest('[data-hcsv]')){
@@ -4362,7 +4391,8 @@ function renderResumoMais(P, act, outs, inc, out, sem, hoje, dias, passados){
   if(outs.length) jump.push(['rSpendH',t('Categorias')]);
   // fixo e dia a dia
   const outsAll = act.filter(function(e){ return e.t === 'out'; }), outAll = sum(outsAll,'out');   // inclui o que falta pagar
-  if(outAll > 0){
+  const fxTem = outsAll.some(function(e){ return e.fx; });   // sem contas fixas no período, o bloco não diz nada
+  if(outAll > 0 && fxTem){
     const fx = outsAll.filter(function(e){ return e.fx; }), fv = sum(fx,'out'), dv = outAll - fv, pagas = fx.filter(function(e){ return e.st !== 'pend'; }).length;
     const pf = Math.round(fv/outAll*100);
     $('#rFixo').innerHTML = '<div class="sech"><b>'+t('Fixo e dia a dia')+'</b></div><div class="card blk">'+
@@ -4422,7 +4452,7 @@ function renderResumoMais(P, act, outs, inc, out, sem, hoje, dias, passados){
     } else $('#rMes').innerHTML = '';
   } else $('#rMes').innerHTML = '';
   if(metasTem()) jump.push(['rMetas',t('Metas')]);
-  $('#rJump').innerHTML = jump.length > 2 ? jump.map(function(j){ return '<button type="button" class="cap" data-jump="'+j[0]+'">'+j[1]+'</button>'; }).join('') : '';
+  $('#rJump').innerHTML = '';   // a fileira de atalhos saía cortada e repetia os títulos logo abaixo
 }
 function metasTem(){ return (S.config.metas || []).length > 0; }
 function histDoPeriodo(o){ const P = period(); abrirHistorico(Object.assign({ ym: V.rMode === 'semana' ? P.a.slice(0,7) : P.a.slice(0,7) }, o)); }
@@ -5644,9 +5674,12 @@ function renderLimites(){
       '<div class="wb '+tom+'"><i style="width:'+Math.min(100, Math.max(p*100, 1)).toFixed(1)+'%"></i></div>'+
       '<div class="ls"><span>'+t('{v} gastos', {v:money0(g)})+'</span><span class="'+(over ? 'neg' : (p >= .75 ? 'warn' : ''))+'">'+(over ? t('Passou {v}', {v:money0(g-lim)}) : t('Restam {v}', {v:money0(lim-g)}))+'</span></div></button>';
   });
-  if(semLim.length) h += '<div class="sech"><b>'+t('Sem limite')+'</b></div><div class="group">'+semLim.map(function(c){ const g = by[c]||0;
-    return '<div class="cell lim-row">'+catIcon(c,'',17)+'<div class="grow"><div class="t">'+esc(c)+'</div><div class="s">'+(g ? t('{v} este mês', {v:money0(g)}) : t('Sem gastos'))+'</div></div>'+
-      '<button type="button" class="capbtn" data-lim="'+esc(c)+'" aria-label="'+t('Definir limite para {c}', {c:esc(c)})+'">'+t('+ Definir')+'</button></div>'; }).join('')+'</div>';
+  // sem limite: só onde já houve gasto no mês (do maior para o menor); o resto fica num botão só
+  const semGasto = semLim.filter(function(c){ return by[c]; }).sort(function(a, b){ return by[b] - by[a]; });
+  if(semLim.length) h += '<div class="sech"><b>'+t('Gastos sem limite')+'</b></div><div class="group">'+semGasto.slice(0, 6).map(function(c){
+    return '<div class="cell lim-row">'+catIcon(c,'',17)+'<div class="grow"><div class="t">'+esc(c)+'</div><div class="s">'+t('{v} este mês', {v:money0(by[c])})+'</div></div>'+
+      '<button type="button" class="capbtn" data-lim="'+esc(c)+'" aria-label="'+t('Definir limite para {c}', {c:esc(c)})+'">'+t('+ Definir')+'</button></div>'; }).join('')+
+    '<button type="button" class="cell lim-mais" data-limnew>'+sq('', 'target', '', 17)+'<span class="t grow" style="color:var(--tint)">'+t('Definir limite em outra categoria')+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button></div>';
   h += '<div class="sec-f">'+t('O limite vale para todo mês. As barras mostram {m}.', {m:MES[+V.ym.slice(5,7)-1]})+'</div>';
   $('#plan').innerHTML = h;
 }
@@ -5810,21 +5843,27 @@ $('#plan').addEventListener('change', function(ev){
   if(ev.target.id === 'autoFx'){ S.config.autoFixos = ev.target.checked; saveConfig(); if(S.config.autoFixos && autoFixos() > 0) return; renderFixas(); return; }
 });
 function launched(fid, ym){ return mList(ym).some(function(e){ return !e.del && e.fx === fid; }); }
+function fixaLinha(f){
+  const done = launched(f.id, V.ym), ent = f.t === 'in';
+  return '<div class="cell" data-fid="'+f.id+'" style="--inset:68px"><span class="cal"><i>'+MES3[+V.ym.slice(5,7)-1].toUpperCase()+'</i><b>'+Math.min(f.dia, lastDay(V.ym))+'</b></span>'+
+    '<button type="button" class="grow abtn" data-fx="edit" aria-label="'+t('Editar {n}', {n:esc(f.nome)})+'"><div class="t">'+esc(f.nome)+'</div><div class="s">'+t('{c} · editar', {c:esc(f.cat)})+'</div></button>'+
+    '<div style="text-align:right"><div class="amt '+(ent?'in':'out')+'">'+(f.varia && !f.v ? '<span class="fx-varia">'+t('valor varia')+'</span>' : (ent?'+':'−')+money(f.v)+(f.varia ? '<small class="fx-ap">'+t('aprox.')+'</small>' : ''))+'</div>'+
+    (done ? '<div style="font-size:13px;font-weight:600;color:var(--green-t)">'+t('Lançada')+'</div>' : '<button type="button" class="btn tinted sm" data-fx="go" style="margin-top:4px;height:28px;font-size:14px">'+t('Lançar')+'</button>')+'</div>'+
+    '<button type="button" class="check" data-fx="del" aria-label="'+(ent ? t('Remover entrada fixa') : t('Remover conta fixa'))+'">'+ic('x',16,2.4)+'</button></div>';
+}
 function renderFixas(){
   const fx = S.config.fixos.slice().sort(function(a,b){ return a.dia - b.dia; });
+  const contas = fx.filter(function(f){ return f.t !== 'in'; }), entradas = fx.filter(function(f){ return f.t === 'in'; });
   const falta = fx.filter(function(f){ return !launched(f.id, V.ym); });
-  let h = '<div class="sech" style="margin-top:8px"><b>'+t('Contas fixas')+'</b><button type="button" class="sech-a" data-fx="new">'+t('+ Nova')+'</button></div>';
-  if(fx.length) h += '<div class="group" style="margin-bottom:12px"><div class="cell"><span class="t grow">'+t('Lançar sozinhas todo mês')+'</span><label class="switch"><input type="checkbox" id="autoFx"'+(S.config.autoFixos ? ' checked' : '')+' aria-label="'+t('Lançar contas fixas sozinhas todo mês')+'"><span></span></label></div></div>';
-  if(!fx.length) h += '<div class="group"><div class="empty">'+sq('#FF3B30','repeat','lg',22)+'<b>'+t('Nenhuma conta fixa')+'</b>'+t('Aluguel, internet, academia. Cadastre uma vez e lance todo mês com um toque.')+'</div></div>';
-  else {
-    h += '<div class="group">' + fx.map(function(f){
-      const done = launched(f.id, V.ym);
-      return '<div class="cell" data-fid="'+f.id+'" style="--inset:68px"><span class="cal"><i>'+MES3[+V.ym.slice(5,7)-1].toUpperCase()+'</i><b>'+Math.min(f.dia, lastDay(V.ym))+'</b></span>'+
-        '<button type="button" class="grow abtn" data-fx="edit" aria-label="'+t('Editar {n}', {n:esc(f.nome)})+'"><div class="t">'+esc(f.nome)+'</div><div class="s">'+t('{c} · editar', {c:esc(f.cat)})+'</div></button>'+
-        '<div style="text-align:right"><div class="amt '+(f.t==='in'?'in':'out')+'">'+(f.varia && !f.v ? '<span class="fx-varia">'+t('valor varia')+'</span>' : (f.t==='in'?'+':'−')+money(f.v)+(f.varia ? '<small class="fx-ap">'+t('aprox.')+'</small>' : ''))+'</div>'+
-        (done ? '<div style="font-size:13px;font-weight:600;color:var(--green-t)">'+t('Lançada')+'</div>' : '<button type="button" class="btn tinted sm" data-fx="go" style="margin-top:4px;height:28px;font-size:14px">'+t('Lançar')+'</button>')+'</div>'+
-        '<button type="button" class="check" data-fx="del" aria-label="'+t('Remover conta fixa')+'">'+ic('x',16,2.4)+'</button></div>';
-    }).join('') + '</div>';
+  let h = '';
+  if(fx.length) h += '<div class="group" style="margin:8px 0 4px"><div class="cell"><span class="t grow">'+t('Lançar sozinhas todo mês')+'</span><label class="switch"><input type="checkbox" id="autoFx"'+(S.config.autoFixos ? ' checked' : '')+' aria-label="'+t('Lançar contas fixas sozinhas todo mês')+'"><span></span></label></div></div>';
+  h += '<div class="sech" style="margin-top:8px"><b>'+t('Contas fixas')+'</b><button type="button" class="sech-a" data-fx="new" data-ft="out">'+t('+ Nova')+'</button></div>';
+  h += contas.length ? '<div class="group">'+contas.map(fixaLinha).join('')+'</div>'
+    : '<div class="group"><div class="empty">'+sq('#FF3B30','repeat','lg',22)+'<b>'+t('Nenhuma conta fixa')+'</b>'+t('Aluguel, internet, academia. Cadastre uma vez e lance todo mês com um toque.')+'</div></div>';
+  h += '<div class="sech" style="margin-top:18px"><b>'+t('Entradas fixas')+'</b><button type="button" class="sech-a" data-fx="new" data-ft="in">'+t('+ Nova')+'</button></div>';
+  h += entradas.length ? '<div class="group">'+entradas.map(fixaLinha).join('')+'</div>'
+    : '<div class="group"><div class="empty">'+sq('#34C759','repeat','lg',22)+'<b>'+t('Nenhuma entrada fixa')+'</b>'+t('Salário, aluguel que você recebe, mesada. Cadastre uma vez e ela entra todo mês.')+'</div></div>';
+  if(fx.length){
     if(falta.length) h += '<button type="button" class="btn full" data-fx="all" style="margin-top:14px">'+t('Lançar as {n} que faltam em {m}', {n:falta.length, m:MES[+V.ym.slice(5,7)-1]})+'</button>';
     h += '<div class="sec-f">'+(S.config.autoFixos ? t('No começo de cada mês elas entram sozinhas como pendentes, no dia do vencimento. Uma conta nova começa a entrar sozinha no mês seguinte.') : t('Lançar cria o lançamento como pendente, no dia do vencimento.'))+'</div>';
   }
@@ -5853,26 +5892,27 @@ function autoFixos(){
   if(n > 0){ render(); island(tn(n, '{n} conta fixa lançada como pendente', '{n} contas fixas lançadas como pendente')); }
   return n;
 }
-function openFixo(f){
+function openFixo(f, tipo){
   const nova = !f;
-  const st = { t:f ? f.t : 'out', area:f ? (f.area || 'pessoal') : 'pessoal', cat:f ? f.cat : S.config.cats.out[0] };
+  const t0 = f ? (f.t || 'out') : (tipo === 'in' ? 'in' : 'out');
+  const st = { t:t0, area:f ? (f.area || 'pessoal') : 'pessoal', cat:f ? f.cat : S.config.cats[t0][0] };
   let h = segHTML('xType', [['out',t('Saída')],['in',t('Entrada')]], st.t, 'v');
-  h += '<div class="group"><label class="cell"><input id="xNome" class="inl-left" type="text" maxlength="60" placeholder="'+t('Nome, como Aluguel ou Internet')+'" aria-label="'+t('Nome')+'" value="'+(f ? esc(f.nome) : '')+'"></label>';
+  h += '<div class="group"><label class="cell"><input id="xNome" class="inl-left" type="text" maxlength="60" placeholder="'+(t0 === 'in' ? t('Nome, como Salário') : t('Nome, como Aluguel ou Internet'))+'" aria-label="'+t('Nome')+'" value="'+(f ? esc(f.nome) : '')+'"></label>';
   h += '<label class="cell"><span class="t grow" id="xValL">'+(f && f.varia ? t('Valor de sempre') : t('Valor'))+'</span><input id="xVal" class="inl" type="text" inputmode="decimal" placeholder="'+(f && f.varia ? t('opcional') : money(0))+'" style="width:130px" value="'+(f && f.v ? toInput(f.v) : '')+'"></label>';
   h += '<div class="cell"><span class="t grow">'+t('O valor muda todo mês')+'</span><label class="switch"><input type="checkbox" id="xVaria"'+(f && f.varia ? ' checked' : '')+' aria-label="'+t('O valor muda todo mês')+'"><span></span></label></div>';
-  h += '<label class="cell"><span class="t grow">'+t('Dia do vencimento')+'</span><input id="xDia" class="inl" type="number" min="1" max="31" inputmode="numeric" placeholder="10" style="width:70px" value="'+(f ? f.dia : '')+'"></label>';
+  h += '<label class="cell"><span class="t grow" id="xDiaL">'+(t0 === 'in' ? t('Dia do recebimento') : t('Dia do vencimento'))+'</span><input id="xDia" class="inl" type="number" min="1" max="31" inputmode="numeric" placeholder="10" style="width:70px" value="'+(f ? f.dia : '')+'"></label>';
   h += '<button type="button" class="cell drow" id="xCatB" aria-expanded="false"><span class="t grow">'+t('Categoria')+'</span><span class="v" id="xCatT">'+esc(st.cat)+'</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>'+drawerEl('xdCat','in-group');
   h += '</div>';
   if(!nova) h += '<div class="sec-f">'+t('As contas deste mês em diante que ainda estão pendentes mudam junto. As que já foram pagas ficam como estão.')+'</div>'+
-    '<button type="button" class="btn full danger" data-fx-del style="margin-top:14px">'+t('Excluir conta fixa')+'</button>';
-  const sh = openSheet({ title:nova ? t('Nova conta fixa') : t('Editar conta fixa'), action:t('Salvar'), html:h, onAction:function(){
+    '<button type="button" class="btn full danger" data-fx-del style="margin-top:14px">'+(t0 === 'in' ? t('Excluir entrada fixa') : t('Excluir conta fixa'))+'</button>';
+  const sh = openSheet({ title:nova ? (t0 === 'in' ? t('Nova entrada fixa') : t('Nova conta fixa')) : (t0 === 'in' ? t('Editar entrada fixa') : t('Editar conta fixa')), action:t('Salvar'), html:h, onAction:function(){
     const nome = $('#xNome', sh).value.trim(), v = parseMoney($('#xVal', sh).value), dia = Math.max(1, Math.min(31, +$('#xDia', sh).value || 1));
-    if(!nome){ island(t('Dê um nome para a conta'), null, true); return; }
+    if(!nome){ island(st.t === 'in' ? t('Dê um nome para a entrada') : t('Dê um nome para a conta'), null, true); return; }
     const varia = $('#xVaria', sh).checked;
     if(!varia && (!v || v <= 0)){ island(t('Coloque o valor'), null, true); return; }
     if(nova){
       S.config.fixos.push({ id:'f'+uid(), nome:nome, v:v || 0, dia:dia, t:st.t, cat:st.cat, area:st.area, met:'', varia:varia, from:ymAdd(ymNow(),1) });
-      saveConfig(); closeSheet(); renderFixas(); island(t('Conta fixa salva')); return;
+      saveConfig(); closeSheet(); renderFixas(); island(st.t === 'in' ? t('Entrada fixa salva') : t('Conta fixa salva')); return;
     }
     Object.assign(f, { nome:nome, v:v || 0, dia:dia, t:st.t, cat:st.cat, area:st.area, varia:varia });
     // as pendentes deste mês em diante acompanham a mudança
@@ -5889,7 +5929,7 @@ function openFixo(f){
       if(mudou) saveMonth(ym);
     });
     saveConfig(); closeSheet(); renderFixas(); haptic(8);
-    island(n ? tn(n, 'Conta fixa salva. {n} pendente atualizada', 'Conta fixa salva. {n} pendentes atualizadas') : t('Conta fixa salva'));
+    island(n ? tn(n, 'Conta fixa salva. {n} pendente atualizada', 'Conta fixa salva. {n} pendentes atualizadas') : (st.t === 'in' ? t('Entrada fixa salva') : t('Conta fixa salva')));
   }});
   if(!nova) sh.addEventListener('click', function(ev){
     if(!ev.target.closest('[data-fx-del]')) return;
@@ -5905,7 +5945,7 @@ function openFixo(f){
     $('#xVal', sh).placeholder = on ? t('opcional') : money(0);
   });
   sh.addEventListener('click', function(ev){
-    const tb = ev.target.closest('#xType button'); if(tb){ segSet($('#xType', sh), tb); st.t = tb.getAttribute('data-v'); if(S.config.cats[st.t].indexOf(st.cat) === -1){ st.cat = S.config.cats[st.t][0]; $('#xCatT', sh).textContent = st.cat; } return; }
+    const tb = ev.target.closest('#xType button'); if(tb){ segSet($('#xType', sh), tb); st.t = tb.getAttribute('data-v'); if(S.config.cats[st.t].indexOf(st.cat) === -1){ st.cat = S.config.cats[st.t][0]; $('#xCatT', sh).textContent = st.cat; } $('#xDiaL', sh).textContent = st.t === 'in' ? t('Dia do recebimento') : t('Dia do vencimento'); return; }
 
 
   });
@@ -5981,7 +6021,7 @@ $('#plan').addEventListener('click', function(ev){
   const fx = ev.target.closest('[data-fx]');
   if(fx){
     const a = fx.getAttribute('data-fx');
-    if(a === 'new') return openFixo();
+    if(a === 'new') return openFixo(null, fx.getAttribute('data-ft'));
     if(a === 'edit'){ const fe = S.config.fixos.filter(function(x){ return x.id === fx.closest('[data-fid]').getAttribute('data-fid'); })[0]; if(fe) openFixo(fe); return; }
     if(a === 'all'){ let n = 0; const variaveis = [];
       S.config.fixos.forEach(function(f){ if(!launched(f.id, V.ym)){ launchFixo(f); n++; if(f.varia) variaveis.push(f); } });
@@ -5991,7 +6031,7 @@ $('#plan').addEventListener('click', function(ev){
     const id = fx.closest('[data-fid]').getAttribute('data-fid'), f = S.config.fixos.filter(function(x){ return x.id === id; })[0]; if(!f) return;
     if(a === 'go' && f.varia){ lancarFixaVariavel(f); return; }
     if(a === 'go'){ launchFixo(f); saveMonth(V.ym); renderFixas(); island(t('{n} lançada', {n:f.nome})); }
-    if(a === 'del'){ S.config.fixos = S.config.fixos.filter(function(x){ return x.id !== id; }); saveConfig(); renderFixas(); island(t('Conta fixa removida'), function(){ S.config.fixos.push(f); saveConfig(); renderFixas(); }); }
+    if(a === 'del'){ S.config.fixos = S.config.fixos.filter(function(x){ return x.id !== id; }); saveConfig(); renderFixas(); island(f.t === 'in' ? t('Entrada fixa removida') : t('Conta fixa removida'), function(){ S.config.fixos.push(f); saveConfig(); renderFixas(); }); }
     return;
   }
   const cc = ev.target.closest('[data-cc]');
