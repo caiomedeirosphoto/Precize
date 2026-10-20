@@ -1254,6 +1254,8 @@ body.cr-open{overflow:hidden}
 .av-row .av-tx .t{font-weight:600;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
 .av-tx .s{font-size:13.5px;color:var(--label-2);margin-top:2px}
 .av-row.novo .av-tx .t::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tint);margin-left:7px;vertical-align:middle}
+.av-sheet .sh-body{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 0);mask-image:linear-gradient(to bottom,transparent 0,#000 0)}
+.av-sheet.rolou .sh-body{-webkit-mask-image:linear-gradient(to bottom,transparent 0,rgba(0,0,0,.35) 14px,#000 44px);mask-image:linear-gradient(to bottom,transparent 0,rgba(0,0,0,.35) 14px,#000 44px)}
 .av-cfg{display:flex;align-items:center;justify-content:center;gap:6px;margin:18px auto 4px}
 /* nome do custo fixo termina em reticências quando não cabe */
 
@@ -5619,6 +5621,9 @@ function abrirAvisos(){
   lista.forEach(function(x){ if(!a.lidos[x.id]) novos[x.id] = 1; });
   const corpo = function(l){ return avisosHTML(l)+'<button type="button" class="plain av-cfg" data-av-cfg>'+glyph('sliders', 15)+'<span>'+t('Escolher os avisos')+'</span></button>'; };
   const sh = openSheet({ title:t('Avisos'), html:corpo(lista), onClose:atualizaSino });
+  // ao rolar, a lista some suave por baixo do título em vez de cortar seco
+  sh.classList.add('av-sheet');
+  const corpoEl = $('.sh-body', sh); corpoEl.addEventListener('scroll', function(){ sh.classList.toggle('rolou', corpoEl.scrollTop > 4); }, { passive:true });
   // abriu, viu: marca como visto (o destaque continua até fechar) e esquece o que não existe mais
   const ids = {}; avisosTodos().forEach(function(x){ ids[x.id] = 1; });
   Object.keys(a.lidos).forEach(function(k){ if(!ids[k]) delete a.lidos[k]; });
