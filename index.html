@@ -1245,7 +1245,16 @@ body.cr-open{overflow:hidden}
 .side-nav.no-sel .side-sel{opacity:0}
 
 /* olho do modo discreto: só no Lançar */
-#eyeBtn[hidden]{display:none !important}
+#eyeBtn[hidden],#bellBtn[hidden]{display:none !important}
+#bellBtn{position:relative;overflow:visible}
+.av-badge{position:absolute;top:-3px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#FF3B30;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--bg,#000)}
+.av-row{gap:4px;padding-right:6px}
+.av-row .av-go{display:flex;align-items:center;gap:12px;min-width:0;text-align:left}
+.av-tx{display:flex;flex-direction:column;min-width:0}
+.av-row .av-tx .t{font-weight:600;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
+.av-tx .s{font-size:13.5px;color:var(--label-2);margin-top:2px}
+.av-row.novo .av-tx .t::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tint);margin-left:7px;vertical-align:middle}
+.av-cfg{display:flex;align-items:center;justify-content:center;gap:6px;margin:18px auto 4px}
 /* nome do custo fixo termina em reticências quando não cabe */
 
 /* =====================================================================
@@ -2142,6 +2151,7 @@ body.private .fe-num,body.private .fe-io b,body.private .fe-linha b{filter:blur(
       <button type="button" class="hback" id="hBack" hidden><svg width="13" height="21" viewBox="0 0 13 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 2.5 2.5 10.5l8 8"/></svg><span id="hBackT">Lançar</span></button>
       <div class="head-l"><h1 class="large-title" id="largeTitle">Lançar</h1><div class="head-sub" id="headSub"></div></div>
       <div class="head-tools">
+        <button type="button" class="hbtn" id="bellBtn" aria-label="Avisos"></button>
         <button type="button" class="hbtn" id="eyeBtn" aria-label="Esconder valores" aria-pressed="false"></button>
         <button type="button" class="hbtn me" id="meBtn" aria-label="Meu perfil"></button>
       </div>
@@ -2767,6 +2777,7 @@ function go(tab, fromHistory){
   $('#largeTitle').textContent = name; $('#nbTitle').textContent = name;
   const me = $('#meBtn'); if(me) me.hidden = tab === 'conta' || tab === 'ajustes';
   const eye = $('#eyeBtn'); if(eye) eye.hidden = !!PAGES[tab];   // o olho aparece nas quatro abas, menos em Meu perfil e Ajustes
+  const bell = $('#bellBtn'); if(bell) bell.hidden = !!PAGES[tab];
   setHeadSub();
   if(tab !== 'lancar'){ const bp = $('#bpill'); if(bp) bp.hidden = true; }
   window.scrollTo(0,0); setNav(false);
@@ -5493,21 +5504,20 @@ function lembAvisar(forcar){
 function abrirLembretes(){
   const c = lembCfg(), pend = lembPendencias();
   const perm = typeof Notification === 'undefined' ? 'sem' : Notification.permission;
-  const h = '<div class="group">'+
+  const off = avCfg().off;
+  const h = grupo(t('Na central de avisos'), AV_TIPOS.map(function(x){ return linhaSw('avT-'+x[0], x[2], x[1], !off[x[0]]); }).join(''), t('Escolha o que aparece no sininho, no topo do app.'))+
+    '<div class="sec-h">'+t('No celular')+'</div><div class="group">'+
       '<div class="cell icon-row">'+sq('', 'bell', '', 17)+'<span class="t grow">'+t('Avisar sobre contas')+'</span><label class="switch"><input type="checkbox" id="lbOn"'+(c.on ? ' checked' : '')+' aria-label="'+t('Avisar sobre contas')+'"><span></span></label></div>'+
       '<label class="cell"><span class="t grow">'+t('Horário')+'</span><input id="lbHora" class="inl" type="time" value="'+(c.hora || '20:00')+'" style="width:auto;color:var(--tint)"></label>'+
       '<label class="cell"><span class="t grow">'+t('Avisar antes')+'</span><select id="lbAntes" class="inl" style="width:auto"><option value="0"'+(c.antes===0?' selected':'')+'>'+t('no dia')+'</option><option value="1"'+(c.antes===1?' selected':'')+'>'+t('1 dia antes')+'</option><option value="2"'+(c.antes===2?' selected':'')+'>'+t('2 dias antes')+'</option><option value="3"'+(c.antes===3?' selected':'')+'>'+t('3 dias antes')+'</option></select></label>'+
     '</div>'+
     '<div class="sec-f">'+t('Os avisos aparecem quando você abre o app ou o deixa aberto. Para receber com o app fechado, vamos precisar do servidor, que entra junto com a IA.')+'</div>'+
     (perm === 'denied' ? '<div class="sl-dif dif">'+glyph('spark',17)+'<span>'+t('Os avisos estão bloqueados nas configurações do aparelho. Libere para o Precize e volte aqui.')+'</span></div>' : '')+
-    '<div class="sec-h">'+t('Agora')+'</div><div class="group">'+
-      (pend.length ? pend.slice(0,5).map(function(x){ return '<div class="cell"><span class="t grow">'+x.txt+'</span><span class="v '+(x.t === 'atraso' ? 'neg' : 'warn')+'">'+money(x.v)+'</span></div>'; }).join('')
-                   : '<div class="cell"><span class="t grow">'+t('Nada pendente por enquanto')+'</span></div>')+
-    '</div>'+
     (pend.length ? '<button type="button" class="btn full soft" data-lb-testar style="margin-top:14px">'+t('Ver como fica o aviso')+'</button>' : '');
-  const sh = openSheet({ title:t('Lembretes'), html:h, onClose:function(){ renderPerfilAtual(); } });
+  const sh = openSheet({ title:t('Avisos'), html:h, onClose:function(){ renderPerfilAtual(); atualizaSino(); } });
   sh.addEventListener('change', async function(ev){
     const c2 = lembCfg();
+    if(ev.target.id.indexOf('avT-') === 0){ const a = avCfg(), k = ev.target.id.slice(4); if(ev.target.checked) delete a.off[k]; else a.off[k] = 1; saveConfig(); atualizaSino(); return; }
     if(ev.target.id === 'lbOn'){
       if(ev.target.checked){ const ok = await lembLigar(); ev.target.checked = ok; if(ok) island(t('Lembretes ligados')); }
       else { c2.on = false; lembSalvar(c2); island(t('Lembretes desligados')); }
@@ -5523,6 +5533,123 @@ function abrirLembretes(){
 }
 setTimeout(function(){ lembAvisar(); }, 4000);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(function(){ lembAvisar(); }, 1500); });
+
+/* ================= central de avisos (o sininho) ================= */
+/* tudo é calculado na hora a partir dos dados; na conta só ficam guardados os já vistos e os dispensados */
+const AV_TIPOS = [['contas', t('Contas e faturas'), 'clock'], ['limites', t('Limites e gastos'), 'target'], ['previsao', t('Previsão do mês'), 'spark'], ['conquistas', t('Metas e conquistas'), 'check']];
+function avCfg(){ const a = S.config.avisos || (S.config.avisos = {}); if(!a.lidos) a.lidos = {}; if(!a.fora) a.fora = {}; if(!a.off) a.off = {}; return a; }
+function irPlanejar(s){ V.plan = s; V.ym = ymNow(); go('planejar'); const b = $('#planSeg [data-s="'+s+'"]'); if(b) segSet($('#planSeg'), b); renderPlanejar(); }
+function avisosTodos(){
+  const hoje = todayISO(), ym = ymNow(), out = [], vivos = live(all());
+  const add = function(o){ out.push(o); };
+  // contas e entradas pendentes
+  vivos.forEach(function(e){
+    if(e.st !== 'pend') return;
+    const dd = diasAte(e.d), val = e.fv && !e.v ? t('valor a confirmar') : money(e.v), nome = e.desc || e.cat;
+    if(e.t === 'in'){
+      if(dd < 0) add({ id:'in:'+e.id, tipo:'contas', nivel:'acao', g:'cash', cor:'#34C759', tit:t('{n} ainda não entrou', {n:nome}), sub:t('Era para {d}', {d:fmtCurto(e.d)})+' · '+val, ir:{ e:e.id } });
+      return;
+    }
+    if(dd < 0) add({ id:'at:'+e.id, tipo:'contas', nivel:'acao', g:'clock', cor:'#FF3B30', tit:t('{n} está atrasada', {n:nome}), sub:t('Venceu em {d}', {d:fmtCurto(e.d)})+' · '+val, ir:{ e:e.id } });
+    else if(dd <= 3) add({ id:'vc:'+e.id, tipo:'contas', nivel:'olho', g:'clock', cor:'#FF9500', tit:(dd === 0 ? t('{n} vence hoje', {n:nome}) : (dd === 1 ? t('{n} vence amanhã', {n:nome}) : t('{n} vence em {d} dias', {n:nome, d:dd}))), sub:val, ir:{ e:e.id } });
+  });
+  // faturas de cartão
+  cartoes().forEach(function(c){
+    const fch = ccFaturas(c).fechada;
+    if(!fch.total || fch.paga) return;
+    const dd = fch.faltaVencer;
+    if(dd < 0) add({ id:'ft:'+c.id+':'+fch.vence, tipo:'contas', nivel:'acao', g:'card', cor:'#FF3B30', tit:t('A fatura do {c} venceu', {c:c.nome}), sub:t('Venceu em {d}', {d:fmtCurto(fch.vence)})+' · '+money(fch.total), ir:{ p:'cartoes' } });
+    else if(dd <= 3) add({ id:'fv:'+c.id+':'+fch.vence, tipo:'contas', nivel:'olho', g:'card', cor:'#FF9500', tit:(dd === 0 ? t('A fatura do {c} vence hoje', {c:c.nome}) : (dd === 1 ? t('A fatura do {c} vence amanhã', {c:c.nome}) : t('A fatura do {c} vence em {d} dias', {c:c.nome, d:dd}))), sub:money(fch.total), ir:{ p:'cartoes' } });
+  });
+  // limites do mês e gastos acima do normal
+  const doMes = live(mList(ym)), by = {};
+  doMes.forEach(function(e){ if(e.t === 'out') by[e.cat] = (by[e.cat] || 0) + e.v; });
+  const bud = S.config.budgets || {};
+  Object.keys(bud).forEach(function(c){
+    const lim = bud[c], g = by[c] || 0; if(!lim) return;
+    if(g > lim) add({ id:'lp:'+c+':'+ym, tipo:'limites', nivel:'acao', g:'target', cor:'#FF3B30', tit:t('Passou do limite de {c}', {c:c}), sub:t('{g} de {l}', {g:money0(g), l:money0(lim)}), ir:{ p:'orc' } });
+    else if(g >= lim * .8) add({ id:'l8:'+c+':'+ym, tipo:'limites', nivel:'olho', g:'target', cor:'#FF9500', tit:t('{c} já usou {p}% do limite', {c:c, p:Math.round(g / lim * 100)}), sub:t('Restam {v}', {v:money0(lim - g)}), ir:{ p:'orc' } });
+  });
+  const ant = [1, 2, 3].map(function(k){ const s = {}; live(mList(ymAdd(ym, -k))).forEach(function(e){ if(e.t === 'out') s[e.cat] = (s[e.cat] || 0) + e.v; }); return s; });
+  Object.keys(by).forEach(function(c){
+    if(bud[c]) return;                                  // quem tem limite já é avisado pelo limite
+    const meses = ant.filter(function(s){ return s[c]; }); if(meses.length < 2) return;
+    const media = meses.reduce(function(s, m){ return s + m[c]; }, 0) / meses.length;
+    if(by[c] > media * 1.4 && by[c] - media >= 5000) add({ id:'ga:'+c+':'+ym, tipo:'limites', nivel:'olho', g:'spark', cor:'#FF9500', tit:t('{c} está {p}% acima da média', {c:c, p:Math.round((by[c] / media - 1) * 100)}), sub:t('{g} neste mês, a média é {m}', {g:money0(by[c]), m:money0(media)}), ir:{ h:c } });
+  });
+  // previsão do mês
+  const inc = sum(doMes, 'in'), sai = sum(doMes, 'out');
+  if(doMes.length && inc - sai < 0) add({ id:'pv:'+ym, tipo:'previsao', nivel:'olho', g:'spark', cor:'#FF3B30', tit:t('{m} vai fechar no vermelho', {m:cap(MES[+ym.slice(5,7)-1])}), sub:t('A previsão é faltar {v}', {v:money(sai - inc)}), ir:{ r:1 } });
+  // metas e conquistas
+  (S.config.metas || []).forEach(function(m){
+    if(!m.alvo) return;
+    if(m.guardado >= m.alvo) add({ id:'mb:'+m.id, tipo:'conquistas', nivel:'bom', g:'target', cor:'#34C759', tit:t('Meta batida: {n}', {n:m.nome}), sub:t('Você juntou {v}', {v:money0(m.guardado)}), ir:{ p:'metas' } });
+    else if(m.guardado >= m.alvo / 2) add({ id:'m5:'+m.id, tipo:'conquistas', nivel:'bom', g:'target', cor:'#007AFF', tit:t('Metade da meta {n}', {n:m.nome}), sub:t('Faltam {v}', {v:money0(m.alvo - m.guardado)}), ir:{ p:'metas' } });
+  });
+  const passado = ymAdd(ym, -1), dP = live(mList(passado));
+  if(+hoje.slice(8,10) <= 10 && dP.length && sum(dP, 'in') > sum(dP, 'out')) add({ id:'mf:'+passado, tipo:'conquistas', nivel:'bom', g:'check', cor:'#34C759', tit:t('{m} fechou no azul', {m:cap(MES[+passado.slice(5,7)-1])}), sub:t('Sobraram {v}.', {v:money(sum(dP, 'in') - sum(dP, 'out'))}), ir:{ f:passado } });
+  if(mode !== 'cloud' && vivos.length >= 30){
+    const lb = S.config.lastBackup, dias = lb ? (Date.now() - new Date(lb).getTime()) / 864e5 : 999;
+    if(dias > 30) add({ id:'bk:'+ym, tipo:'conquistas', nivel:'bom', g:'cloud', cor:'#8E8E93', tit:t('Hora de fazer um backup'), sub:lb ? t('O último foi em {d}', {d:fmtCurto(lb.slice(0,10))}) : t('Você ainda não fez nenhum'), ir:{ b:1 } });
+  }
+  return out;
+}
+function avisosAtivos(){ const a = avCfg(); return avisosTodos().filter(function(x){ return !a.off[x.tipo] && !a.fora[x.id]; }); }
+function atualizaSino(){
+  const b = $('#bellBtn'); if(!b) return;
+  let n = 0;
+  try{ const a = avCfg(); n = avisosAtivos().filter(function(x){ return !a.lidos[x.id]; }).length; }catch(e){}
+  b.innerHTML = glyph('bell', 21) + (n ? '<b class="av-badge">'+(n > 9 ? '9+' : n)+'</b>' : '');
+  b.setAttribute('aria-label', n ? tn(n, '{n} aviso novo', '{n} avisos novos') : t('Avisos'));
+}
+function avisosHTML(lista){
+  if(!lista.length) return '<div class="group"><div class="empty">'+sq('#34C759','check','lg',22)+'<b>'+t('Tudo em dia')+'</b>'+t('Quando uma conta vencer, um limite apertar ou uma meta for batida, o aviso aparece aqui.')+'</div></div>';
+  const a = avCfg(), grupos = [['acao', t('Pede ação')], ['olho', t('Fique de olho')], ['bom', t('Novidades')]];
+  return grupos.map(function(g){
+    const it = lista.filter(function(x){ return x.nivel === g[0]; }); if(!it.length) return '';
+    return '<div class="sec-h">'+g[1]+'</div><div class="group">'+it.map(function(x){
+      return '<div class="cell av-row'+(a.lidos[x.id] ? '' : ' novo')+'" data-av="'+esc(x.id)+'">'+
+        '<button type="button" class="grow abtn av-go">'+sq(x.cor, x.g, 'sem', 17)+'<span class="av-tx"><span class="t">'+esc(x.tit)+'</span><span class="s">'+x.sub+'</span></span></button>'+
+        '<button type="button" class="check av-x" aria-label="'+t('Dispensar aviso')+'">'+ic('x',15,2.4)+'</button></div>';
+    }).join('')+'</div>';
+  }).join('');
+}
+function abrirAvisos(){
+  const a = avCfg(), lista = avisosAtivos(), novos = {};
+  lista.forEach(function(x){ if(!a.lidos[x.id]) novos[x.id] = 1; });
+  const corpo = function(l){ return avisosHTML(l)+'<button type="button" class="plain av-cfg" data-av-cfg>'+glyph('sliders', 15)+'<span>'+t('Escolher os avisos')+'</span></button>'; };
+  const sh = openSheet({ title:t('Avisos'), html:corpo(lista), onClose:atualizaSino });
+  // abriu, viu: marca como visto (o destaque continua até fechar) e esquece o que não existe mais
+  const ids = {}; avisosTodos().forEach(function(x){ ids[x.id] = 1; });
+  Object.keys(a.lidos).forEach(function(k){ if(!ids[k]) delete a.lidos[k]; });
+  Object.keys(a.fora).forEach(function(k){ if(!ids[k]) delete a.fora[k]; });
+  lista.forEach(function(x){ a.lidos[x.id] = 1; });
+  saveConfig(); atualizaSino();
+  sh.addEventListener('click', function(ev){
+    if(ev.target.closest('[data-av-cfg]')){ closeSheet(); setTimeout(abrirLembretes, 280); return; }
+    const row = ev.target.closest('[data-av]'); if(!row) return;
+    const id = row.getAttribute('data-av'), x = lista.filter(function(y){ return y.id === id; })[0]; if(!x) return;
+    if(ev.target.closest('.av-x')){
+      a.fora[id] = 1; saveConfig(); haptic(6);
+      const resto = avisosAtivos();
+      $('.sh-body', sh).innerHTML = corpo(resto);
+      resto.forEach(function(y){ if(novos[y.id]) { const r = $('[data-av="'+y.id.replace(/"/g, '\\"')+'"]', sh); if(r) r.classList.add('novo'); } });
+      island(t('Aviso dispensado'), function(){ delete a.fora[id]; saveConfig(); atualizaSino(); });
+      return;
+    }
+    closeSheet();
+    setTimeout(function(){
+      const ir = x.ir;
+      if(ir.e){ const f = find(ir.e); if(f){ if(V.tab !== 'historico') go('historico'); openEntry(f); } }
+      else if(ir.p) irPlanejar(ir.p);
+      else if(ir.h) abrirHistorico({ ym:ymNow(), cat:ir.h, type:'out' });
+      else if(ir.r){ V.rDate = ymNow()+'-01'; go('resumo'); }
+      else if(ir.f) abrirFechamento(ir.f);
+      else if(ir.b) abrirSecao('dados');
+    }, 300);
+  });
+}
+document.addEventListener('click', function(ev){ if(ev.target.closest('#bellBtn')){ haptic(6); abrirAvisos(); } });
 
 /* ================= fechamento do mês ================= */
 const FECH_KEY = 'fechados';
@@ -6397,6 +6524,7 @@ function render(){
   else if(V.tab === 'conta') renderConta();
   else renderAjustes();
   renderDica(V.tab);
+  atualizaSino();
 }
 
 /* ================= nuvem ================= */
@@ -6626,7 +6754,7 @@ function renderConta(){
     '</span><span class="chev">'+ic('chevRs',14,2.4)+'</span></button>';
   h += grupo('', linhaSw('privSw', 'eye', t('Modo discreto'), document.body.classList.contains('private'))+
     linhaConta('data-trava', 'lock', '', t('Travar o app'), lockLigado() ? (lockCfg() && lockCfg().bio ? t('Código e Face ID') : t('Código')) : t('Desligado'))+
-    linhaConta('data-lembretes', 'bell', '', t('Lembretes'), lembCfg().on ? t('Ligados') : t('Desligados')),
+    linhaConta('data-lembretes', 'bell', '', t('Avisos'), lembCfg().on ? t('Ligados') : t('Desligados')),
     t('O modo discreto esconde os valores em todo o app. Ele também liga pelo olho no topo das abas.'));
   h += grupo(t('Geral'), linhaConta('data-sec="aparencia"', 'tema', '', t('Aparência'), rotulo(TEMAS, sb.tema))+
     linhaConta('data-sec="regiao"', 'globe', '', t('Região e idioma'), IDIOMAS[r.idioma].nome.replace(/ \(.*\)$/, '')+' · '+r.moeda), '');
